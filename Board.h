@@ -24,8 +24,6 @@ class Board
         unsigned short getTurnNumber();
 
         static sf::Font* s_font;
-        static std::vector<char> s_mills;
-        static std::vector<std::vector<char>> s_neighbors;
 
         static constexpr float BLUE = 1.0f;
         static constexpr float RED = -1.0f;
@@ -37,7 +35,8 @@ class Board
         unsigned short m_activeRounds;
         float* m_field;
 
-        bool isPartOfMill(int index, float player);
+        bool isPartOfMill(unsigned int index, float player);
+        void tryMoveTo(unsigned int from, unsigned int to, Board& next, std::vector<EncodedBoard>& result);
 };
 
 #endif // BOARD_H

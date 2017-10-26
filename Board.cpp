@@ -49,12 +49,55 @@ EncodedBoard Board::encode()
     return result;
 }
 
-bool Board::isPartOfMill(int index, float player)
+bool Board::isPartOfMill(unsigned int i, float player)
 {
-    if(m_field[index] != player)
+    if(m_field[i] != player)
         return false;
-    return (m_field[s_mills[index * 4 + 0]] == player && m_field[s_mills[index * 4 + 1]] == player) ||
-           (m_field[s_mills[index * 4 + 2]] == player && m_field[s_mills[index * 4 + 3]] == player);
+    if(i % 2 == 0) // i is in a corner
+    {
+        return (m_field[(i + 1) % 8 + i / 8 * 8] == player && m_field[(i + 2) % 8 + i / 8 * 8] == player) ||
+               (m_field[(i + 6) % 8 + i / 8 * 8] == player && m_field[(i + 7) % 8 + i / 8 * 8] == player);
+    }
+    else
+    {
+        return (m_field[(i + 1) % 8 + i / 8 * 8] == player && m_field[(i + 7) % 8 + i / 8 * 8] == player) ||
+               (m_field[(i + 8) % 24] == player && m_field[(i + 16) % 24] == player);
+    }
+}
+
+void Board::tryMoveTo(unsigned int from, unsigned int to, Board& next, std::vector<EncodedBoard>& result)
+{
+    unsigned int i = from;
+    unsigned int n = to;
+    if(n < 0 || n >= 24 || m_field[n] != EMPTY)
+        return;
+    next.m_field[n] = BLUE;
+    next.m_field[i] = EMPTY;
+    if(next.isPartOfMill(n, BLUE))
+    {
+        bool isInEnemyMill[24];
+        bool enemyHasStoneNotInMill = false;
+        for(int j = 0; j < 24; j++)
+        {
+            isInEnemyMill[j] = next.isPartOfMill(j, RED);
+            enemyHasStoneNotInMill |= (next.m_field[j] == RED && !isInEnemyMill[j]);
+        }
+        for(int j = 0; j < 24; j++)
+        {
+            if(m_field[j] == RED && (!enemyHasStoneNotInMill || !isInEnemyMill[j]))
+            {
+                next.m_field[j] = EMPTY;
+                result.push_back(next.encode());
+                next.m_field[j] = RED;
+            }
+        }
+    }
+    else
+    {
+        result.push_back(next.encode());
+    }
+    next.m_field[n] = EMPTY;
+    next.m_field[i] = BLUE;
 }
 
 std::vector<EncodedBoard> Board::getNextLegalStates()
@@ -109,43 +152,16 @@ std::vector<EncodedBoard> Board::getNextLegalStates()
             return result;
         // TODO implement flying when blueStoneCount == 3
         memcpy(next.m_field, m_field, sizeof(float) * 24);
-        for(int i = 0; i < 24; i++)
+        for(unsigned int i = 0; i < 24; i++)
         {
             if(m_field[i] != BLUE)
                 continue;
-            for(auto n : s_neighbors[i])
+            tryMoveTo(i, (i + 1) % 8 + i / 8 * 8, next, result);
+            tryMoveTo(i, (i + 7) % 8 + i / 8 * 8, next, result);
+            if(i % 2 == 1) // not in corner
             {
-                if(m_field[n] != EMPTY)
-                    continue;
-                next.m_field[n] = BLUE;
-                next.m_field[i] = EMPTY;
-                // TODO eliminate this copy pasta
-                if(next.isPartOfMill(n, BLUE))
-                {
-                    bool isInEnemyMill[24];
-                    bool enemyHasStoneNotInMill = false;
-                    for(int j = 0; j < 24; j++)
-                    {
-                        isInEnemyMill[j] = next.isPartOfMill(j, RED);
-                        enemyHasStoneNotInMill |= (next.m_field[j] == RED && !isInEnemyMill[j]);
-                    }
-                    for(int j = 0; j < 24; j++)
-                    {
-                        if(m_field[j] == RED && (!enemyHasStoneNotInMill || !isInEnemyMill[j]))
-                        {
-                            next.m_field[j] = EMPTY;
-                            result.push_back(next.encode());
-                            next.m_field[j] = RED;
-                        }
-                    }
-                }
-                else
-                {
-                    result.push_back(next.encode());
-                }
-
-                next.m_field[n] = EMPTY;
-                next.m_field[i] = BLUE;
+                tryMoveTo(i, i + 8, next, result);
+                tryMoveTo(i, i - 8, next, result);
             }
         }
     }
@@ -164,30 +180,32 @@ void Board::draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos)
     static std::vector<sf::Vector2<float>> offsetMap;
     if(offsetMap.size() == 0)
     {
-        offsetMap.push_back({0, 0});
-        offsetMap.push_back({3, 0});
-        offsetMap.push_back({6, 0});
-        offsetMap.push_back({1, 1});
-        offsetMap.push_back({3, 1});
-        offsetMap.push_back({5, 1});
         offsetMap.push_back({2, 2});
         offsetMap.push_back({3, 2});
         offsetMap.push_back({4, 2});
-        offsetMap.push_back({0, 3});
-        offsetMap.push_back({1, 3});
-        offsetMap.push_back({2, 3});
         offsetMap.push_back({4, 3});
-        offsetMap.push_back({5, 3});
-        offsetMap.push_back({6, 3});
-        offsetMap.push_back({2, 4});
-        offsetMap.push_back({3, 4});
         offsetMap.push_back({4, 4});
-        offsetMap.push_back({1, 5});
-        offsetMap.push_back({3, 5});
+        offsetMap.push_back({3, 4});
+        offsetMap.push_back({2, 4});
+        offsetMap.push_back({2, 3});
+
+        offsetMap.push_back({1, 1});
+        offsetMap.push_back({3, 1});
+        offsetMap.push_back({5, 1});
+        offsetMap.push_back({5, 3});
         offsetMap.push_back({5, 5});
-        offsetMap.push_back({0, 6});
-        offsetMap.push_back({3, 6});
+        offsetMap.push_back({3, 5});
+        offsetMap.push_back({1, 5});
+        offsetMap.push_back({1, 3});
+
+        offsetMap.push_back({0, 0});
+        offsetMap.push_back({3, 0});
+        offsetMap.push_back({6, 0});
+        offsetMap.push_back({6, 3});
         offsetMap.push_back({6, 6});
+        offsetMap.push_back({3, 6});
+        offsetMap.push_back({0, 6});
+        offsetMap.push_back({0, 3});
     }
 
     sf::Vector2<float> stoneOff = {0, fontSize};
