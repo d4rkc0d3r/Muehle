@@ -13,6 +13,7 @@
 #include "RandomAgent.h"
 #include "GreedyAgent.h"
 #include "PickFirstAgent.h"
+#include "BrainAgent.h"
 
 sf::Font* Board::s_font = nullptr;
 
@@ -28,8 +29,15 @@ int main()
     sf::Text text;
     text.setFont(font);
 
-    AIAgent* ai1 = new GreedyAgent(0, 1);
-    AIAgent* ai2 = new RandomAgent(2);
+    Brain b({25, 40, 25, 1});
+
+    std::mt19937 rng;
+    rng.seed(0);
+
+    b.randomizeAll(rng);
+
+    AIAgent* ai1 = new BrainAgent(b);
+    AIAgent* ai2 = new RandomAgent(0);
     int ai1wins = 0;
     int ai2wins = 0;
 
@@ -57,11 +65,18 @@ int main()
             }
         }
 
-        for (int i = 0; i < 10; i++)
+        ai1wins = 0;
+        ai2wins = 0;
+        for (int i = 0; i < 1000; i++)
         {
             board.decode(0);
             while (true)
             {
+                if(board.getTurnNumber() > 1000)
+                {
+                    std::cout << "Game terminated after 1000 turns" << std::endl;
+                    break;
+                }
                 bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;
                 if (!isPlayer1Turn)
                     board.invert();

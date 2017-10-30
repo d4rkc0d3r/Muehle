@@ -27,15 +27,20 @@ unsigned short Board::getTurnNumber()
     return m_activeRounds;
 }
 
-void Board::decode(EncodedBoard b)
+void Board::decode(EncodedBoard b, float* target)
 {
     for(int i = 23; i >= 0; i--)
     {
-        m_field[i] = (b & 3) ? (b & 2 ? BLUE : RED) : EMPTY;
+        target[i] = (b & 3) ? (b & 2 ? BLUE : RED) : EMPTY;
         b >>= 2;
     }
-    m_field[24] = (b < 18) ? 0.0f : 1.0f;
-    m_activeRounds = b;
+    target[24] = (b < 18) ? 0.0f : 1.0f;
+}
+
+void Board::decode(EncodedBoard b)
+{
+    decode(b, m_field);
+    m_activeRounds = b >> 48;
 }
 
 EncodedBoard Board::encode()

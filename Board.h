@@ -23,6 +23,8 @@ class Board
 
         unsigned short getTurnNumber();
 
+        static void decode(EncodedBoard b, float* target);
+
         static sf::Font* s_font;
 
         static constexpr float BLUE = 1.0f;

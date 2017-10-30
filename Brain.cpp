@@ -6,10 +6,25 @@
 
 sf::Font* font = nullptr;
 
+Brain::Brain()
+{
+    m_neurons = nullptr;
+    m_bias = nullptr;
+    m_weights = nullptr;
+    m_neuronCount = 0;
+    m_connectionCount = 0;
+    m_biasCount = 0;
+}
+
 Brain::Brain(const std::vector<std::size_t>& layerSize)
 {
     m_layerSize = layerSize;
     initArrays();
+}
+
+Brain::~Brain()
+{
+    cleanArrays();
 }
 
 void Brain::initArrays()
@@ -25,19 +40,73 @@ void Brain::initArrays()
     m_neurons = new float[m_neuronCount];
     m_bias = new float[m_biasCount];
     m_weights = new float[m_connectionCount];
-    for(int i = 0; i < m_connectionCount; i++)
+    for (std::size_t i = 0; i < m_connectionCount; i++)
     {
         m_weights[i] = 1;
     }
-    for(int i = 0; i < m_biasCount; i++)
+    for (std::size_t i = 0; i < m_biasCount; i++)
     {
         m_bias[i] = 2 - i;
+    }
+}
+
+void Brain::cleanArrays()
+{
+    if (m_neurons != nullptr)
+    {
+        delete [] m_neurons;
+        m_neurons = nullptr;
+        m_neuronCount = 0;
+    }
+    if (m_bias != nullptr)
+    {
+        delete [] m_bias;
+        m_bias = nullptr;
+        m_biasCount = 0;
+    }
+    if (m_weights != nullptr)
+    {
+        delete [] m_weights;
+        m_weights = nullptr;
+        m_connectionCount = 0;
+    }
+}
+
+Brain& Brain::operator=(const Brain& b)
+{
+    if (this != &b)
+    {
+        cleanArrays();
+        m_layerSize = b.m_layerSize;
+        initArrays();
+        std::memcpy(m_neurons, b.m_neurons, m_neuronCount * sizeof(float));
+        std::memcpy(m_bias, b.m_bias, m_biasCount * sizeof(float));
+        std::memcpy(m_weights, b.m_weights, m_connectionCount * sizeof(float));
+    }
+    return *this;
+}
+
+void Brain::randomizeAll(std::mt19937& rng)
+{
+    std::normal_distribution<float> d(0.0f, 1.0f);
+    for (std::size_t i = 0; i < m_biasCount; i++)
+    {
+        m_bias[i] = d(rng);
+    }
+    for (std::size_t i = 0; i < m_connectionCount; i++)
+    {
+        m_weights[i] = d(rng);
     }
 }
 
 void Brain::setInputNeurons(float* input)
 {
     std::memcpy(m_neurons, input, sizeof(float) * m_layerSize[0]);
+}
+
+void Brain::setInputNeurons(EncodedBoard b)
+{
+    Board::decode(b, m_neurons);
 }
 
 void Brain::getOutputNeurons(float* output)
@@ -151,11 +220,4 @@ void Brain::think()
         }
         offset += layerSize;
     }
-}
-
-Brain::~Brain()
-{
-    delete [] m_neurons;
-    delete [] m_bias;
-    delete [] m_weights;
 }
