@@ -9,6 +9,7 @@
 #include "Board.h"
 #include <random>
 #include <iomanip>
+#include <fstream>
 #include <sstream>
 #include "RandomAgent.h"
 #include "GreedyAgent.h"
@@ -29,7 +30,9 @@ int main()
     sf::Text text;
     text.setFont(font);
 
-    Brain b({25, 40, 25, 1});
+    std::vector<std::size_t> netSize {25, 40, 25, 1};
+
+    Brain b(netSize);
 
     std::mt19937 rng;
     rng.seed(0);
@@ -74,7 +77,7 @@ int main()
             {
                 if(board.getTurnNumber() > 1000)
                 {
-                    std::cout << "Game terminated after 1000 turns" << std::endl;
+                    //std::cout << "Game terminated after 1000 turns" << std::endl;
                     break;
                 }
                 bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;

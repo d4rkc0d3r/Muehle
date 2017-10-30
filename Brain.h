@@ -23,6 +23,9 @@ class Brain
         Brain& operator=(const Brain& b);
 
         void randomizeAll(std::mt19937& rng);
+
+        void load(std::istream& input);
+        void save(std::ostream& output);
     protected:
 
     private:

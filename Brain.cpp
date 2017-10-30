@@ -42,11 +42,11 @@ void Brain::initArrays()
     m_weights = new float[m_connectionCount];
     for (std::size_t i = 0; i < m_connectionCount; i++)
     {
-        m_weights[i] = 1;
+        m_weights[i] = 0;
     }
     for (std::size_t i = 0; i < m_biasCount; i++)
     {
-        m_bias[i] = 2 - i;
+        m_bias[i] = 0;
     }
 }
 
@@ -84,6 +84,37 @@ Brain& Brain::operator=(const Brain& b)
         std::memcpy(m_weights, b.m_weights, m_connectionCount * sizeof(float));
     }
     return *this;
+}
+
+void Brain::load(std::istream& input)
+{
+    cleanArrays();
+    char* buffer = new char[4];
+    m_layerSize.clear();
+    input.read(buffer, 4);
+    uint32_t layers = *((uint32_t*)buffer);
+    for (uint32_t i = 0; i < layers; i++)
+    {
+        input.read(buffer, 4);
+        m_layerSize.push_back(*((uint32_t*)buffer));
+    }
+    delete [] buffer;
+    initArrays();
+    input.read((char*)m_weights, m_connectionCount * sizeof(float));
+    input.read((char*)m_bias, m_biasCount * sizeof(float));
+}
+
+void Brain::save(std::ostream& output)
+{
+    uint32_t buffer = m_layerSize.size();
+    output.write((char*)&buffer, 4);
+    for (uint32_t i = 0; i < m_layerSize.size(); i++)
+    {
+        buffer = m_layerSize[i];
+        output.write((char*)&buffer, 4);
+    }
+    output.write((char*)m_weights, m_connectionCount * sizeof(float));
+    output.write((char*)m_bias, m_biasCount * sizeof(float));
 }
 
 void Brain::randomizeAll(std::mt19937& rng)
