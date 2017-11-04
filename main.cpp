@@ -43,6 +43,42 @@ void sortBrainsAndScores(Brain** brains, double* scores, uint32_t POP_SIZE)
     }
 }
 
+void evaluate(AIAgent* ai, AIAgent* antagonist, double* score, uint32_t MATCH_COUNT, EncodedBoard* output)
+{
+    Board board;
+    for (uint32_t i = 0; i < MATCH_COUNT; i++)
+    {
+        board.decode(0);
+        while (true)
+        {
+            if (board.getTurnNumber() > 1000)
+            {
+                break;
+            }
+            bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;
+            if (!isPlayer1Turn)
+                board.invert();
+            std::vector<EncodedBoard> n = board.getNextLegalStates();
+            if (n.size() > 0)
+            {
+                board.decode(n[(isPlayer1Turn) ? ai->selectPlay(n) : antagonist->selectPlay(n)]);
+                if (!isPlayer1Turn)
+                    board.invert();
+            }
+            else
+            {
+                if (!isPlayer1Turn)
+                {
+                    *score = *score + 1;
+                    board.invert();
+                }
+                break;
+            }
+        }
+    }
+    *output = board.encode();
+}
+
 int main()
 {
     using namespace std::chrono;
@@ -65,6 +101,8 @@ int main()
 
     uint32_t genNumber = 0;
     uint32_t evalIndex = 0;
+
+    high_resolution_clock::time_point tStartGen = high_resolution_clock::now();
 
     Brain** brains = new Brain*[POP_SIZE];
     double* scores = new double[POP_SIZE];
@@ -106,8 +144,9 @@ int main()
 
         if (evalIndex >= POP_SIZE)
         {
+            duration<double> time_span = duration_cast<duration<double>>(high_resolution_clock::now() - tStartGen);
             sortBrainsAndScores(brains, scores, POP_SIZE);
-            std::cout << "gen" << genNumber << " finished\n";
+            std::cout << "gen" << genNumber << " finished in " << time_span.count() << "s\n";
             std::cout << " + " << (100 * scores[0] / MATCH_COUNT) << "% win rate\n";
             std::cout << " ~ " << (100 * scores[POP_SIZE / 2] / MATCH_COUNT) << "% win rate\n";
             std::cout << " - " << (100 * scores[POP_SIZE - 1] / MATCH_COUNT) << "% win rate\n";
@@ -127,40 +166,13 @@ int main()
 
             genNumber++;
             evalIndex = 0;
+            tStartGen = high_resolution_clock::now();
         }
         else
         {
-            for (uint32_t i = 0; i < MATCH_COUNT; i++)
-            {
-                board.decode(0);
-                while (true)
-                {
-                    if (board.getTurnNumber() > 1000)
-                    {
-                        //std::cout << "Game terminated after 1000 turns" << std::endl;
-                        break;
-                    }
-                    bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;
-                    if (!isPlayer1Turn)
-                        board.invert();
-                    std::vector<EncodedBoard> n = board.getNextLegalStates();
-                    if (n.size() > 0)
-                    {
-                        board.decode(n[(isPlayer1Turn) ? ais[evalIndex].selectPlay(n) : antagonist[evalIndex].selectPlay(n)]);
-                        if (!isPlayer1Turn)
-                            board.invert();
-                    }
-                    else
-                    {
-                        if (!isPlayer1Turn)
-                        {
-                            scores[evalIndex]++;
-                            board.invert();
-                        }
-                        break;
-                    }
-                }
-            }
+            EncodedBoard ret;
+            evaluate(&ais[evalIndex], &antagonist[evalIndex], &scores[evalIndex], MATCH_COUNT, &ret);
+            board.decode(ret);
             evalIndex++;
         }
 
