@@ -7,6 +7,7 @@
 class GreedyAgent : public AIAgent
 {
     public:
+        GreedyAgent();
         GreedyAgent(unsigned int seed);
         GreedyAgent(unsigned int seed, int recursiveLevel);
         virtual ~GreedyAgent();

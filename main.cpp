@@ -60,8 +60,8 @@ int main()
     std::mt19937 rng;
     rng.seed(0);
 
-    const uint32_t POP_SIZE = 100;
-    const uint32_t MATCH_COUNT = 250;
+    const uint32_t POP_SIZE = 50;
+    const uint32_t MATCH_COUNT = 100;
 
     uint32_t genNumber = 0;
     uint32_t evalIndex = 0;
@@ -69,6 +69,7 @@ int main()
     Brain** brains = new Brain*[POP_SIZE];
     double* scores = new double[POP_SIZE];
     BrainAgent* ais = new BrainAgent[POP_SIZE];
+    GreedyAgent* antagonist = new GreedyAgent[POP_SIZE];
 
     for(uint32_t i = 0; i < POP_SIZE; i++)
     {
@@ -77,8 +78,6 @@ int main()
         ais[i].setBrain(*brains[i]);
         scores[i] = 0;
     }
-
-    AIAgent* antagonist = new GreedyAgent(0, 1);
 
     Board board;
     board.decode(0);
@@ -147,7 +146,7 @@ int main()
                     std::vector<EncodedBoard> n = board.getNextLegalStates();
                     if (n.size() > 0)
                     {
-                        board.decode(n[((isPlayer1Turn) ? &ais[evalIndex] : antagonist)->selectPlay(n)]);
+                        board.decode(n[(isPlayer1Turn) ? ais[evalIndex].selectPlay(n) : antagonist[evalIndex].selectPlay(n)]);
                         if (!isPlayer1Turn)
                             board.invert();
                     }

@@ -1,6 +1,13 @@
 #include "GreedyAgent.h"
 #include <sstream>
 
+GreedyAgent::GreedyAgent()
+{
+    m_rng.seed(0);
+    m_recursiveLevel = 0;
+    m_name = "Greedy";
+}
+
 GreedyAgent::GreedyAgent(unsigned int seed)
 {
     m_rng.seed(seed);
