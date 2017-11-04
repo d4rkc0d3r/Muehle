@@ -7,8 +7,11 @@
 class BrainAgent : public AIAgent
 {
     public:
+        BrainAgent();
         BrainAgent(const Brain& b);
         virtual ~BrainAgent();
+
+        void setBrain(const Brain& b);
 
         virtual std::string getName();
         virtual int selectPlay(const std::vector<EncodedBoard>& choices);

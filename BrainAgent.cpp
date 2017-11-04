@@ -1,5 +1,10 @@
 #include "BrainAgent.h"
 
+BrainAgent::BrainAgent()
+{
+
+}
+
 BrainAgent::BrainAgent(const Brain& b)
 {
     m_brain = b;
@@ -8,6 +13,11 @@ BrainAgent::BrainAgent(const Brain& b)
 BrainAgent::~BrainAgent()
 {
     //dtor
+}
+
+void BrainAgent::setBrain(const Brain& b)
+{
+    m_brain = b;
 }
 
 std::string BrainAgent::getName()

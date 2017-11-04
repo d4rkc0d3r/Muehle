@@ -13,6 +13,8 @@ class Brain
         Brain(const std::vector<std::size_t>& layerSize);
         virtual ~Brain();
 
+        void init(const std::vector<std::size_t>& layerSize);
+
         void draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos);
 
         void setInputNeurons(float* input);
@@ -23,6 +25,7 @@ class Brain
         Brain& operator=(const Brain& b);
 
         void randomizeAll(std::mt19937& rng);
+        void randomize(std::mt19937& rng);
 
         void load(std::istream& input);
         void save(std::ostream& output);

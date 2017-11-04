@@ -18,6 +18,31 @@
 
 sf::Font* Board::s_font = nullptr;
 
+void sortBrainsAndScores(Brain** brains, double* scores, uint32_t POP_SIZE)
+{
+    for (uint32_t i = 0; i < POP_SIZE - 1; i++)
+    {
+        double largestValue = scores[i];
+        uint32_t largestIndex = i;
+        for (uint32_t j = i + 1; j < POP_SIZE; j++)
+        {
+            if (scores[j] > largestValue)
+            {
+                largestIndex = j;
+                largestValue = scores[j];
+            }
+        }
+        if (largestIndex != i)
+        {
+            Brain* tmp = brains[i];
+            brains[i] = brains[largestIndex];
+            brains[largestIndex] = tmp;
+            scores[largestIndex] = scores[i];
+            scores[i] = largestValue;
+        }
+    }
+}
+
 int main()
 {
     using namespace std::chrono;
@@ -32,17 +57,28 @@ int main()
 
     std::vector<std::size_t> netSize {25, 40, 25, 1};
 
-    Brain b(netSize);
-
     std::mt19937 rng;
     rng.seed(0);
 
-    b.randomizeAll(rng);
+    const uint32_t POP_SIZE = 100;
+    const uint32_t MATCH_COUNT = 250;
 
-    AIAgent* ai1 = new BrainAgent(b);
-    AIAgent* ai2 = new RandomAgent(0);
-    int ai1wins = 0;
-    int ai2wins = 0;
+    uint32_t genNumber = 0;
+    uint32_t evalIndex = 0;
+
+    Brain** brains = new Brain*[POP_SIZE];
+    double* scores = new double[POP_SIZE];
+    BrainAgent* ais = new BrainAgent[POP_SIZE];
+
+    for(uint32_t i = 0; i < POP_SIZE; i++)
+    {
+        brains[i] = new Brain(netSize);
+        brains[i]->randomizeAll(rng);
+        ais[i].setBrain(*brains[i]);
+        scores[i] = 0;
+    }
+
+    AIAgent* antagonist = new GreedyAgent(0, 1);
 
     Board board;
     board.decode(0);
@@ -68,47 +104,73 @@ int main()
             }
         }
 
-        ai1wins = 0;
-        ai2wins = 0;
-        for (int i = 0; i < 1000; i++)
+
+        if (evalIndex >= POP_SIZE)
         {
-            board.decode(0);
-            while (true)
+            sortBrainsAndScores(brains, scores, POP_SIZE);
+            std::cout << "gen" << genNumber << " finished\n";
+            std::cout << " + " << (100 * scores[0] / MATCH_COUNT) << "% win rate\n";
+            std::cout << " ~ " << (100 * scores[POP_SIZE / 2] / MATCH_COUNT) << "% win rate\n";
+            std::cout << " - " << (100 * scores[POP_SIZE - 1] / MATCH_COUNT) << "% win rate\n";
+            std::cout << std::endl;
+
+            for(uint32_t i = POP_SIZE / 2; i < POP_SIZE; i++)
             {
-                if(board.getTurnNumber() > 1000)
+                *brains[i] = *brains[i - POP_SIZE / 2];
+            }
+
+            for(uint32_t i = 0; i < POP_SIZE; i++)
+            {
+                brains[i]->randomize(rng);
+                ais[i].setBrain(*brains[i]);
+                scores[i] = 0;
+            }
+
+            genNumber++;
+            evalIndex = 0;
+        }
+        else
+        {
+            for (uint32_t i = 0; i < MATCH_COUNT; i++)
+            {
+                board.decode(0);
+                while (true)
                 {
-                    //std::cout << "Game terminated after 1000 turns" << std::endl;
-                    break;
-                }
-                bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;
-                if (!isPlayer1Turn)
-                    board.invert();
-                std::vector<EncodedBoard> n = board.getNextLegalStates();
-                if (n.size() > 0)
-                {
-                    board.decode(n[((isPlayer1Turn) ? ai1 : ai2)->selectPlay(n)]);
+                    if (board.getTurnNumber() > 1000)
+                    {
+                        //std::cout << "Game terminated after 1000 turns" << std::endl;
+                        break;
+                    }
+                    bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;
                     if (!isPlayer1Turn)
                         board.invert();
-                }
-                else
-                {
-                    if(isPlayer1Turn)
+                    std::vector<EncodedBoard> n = board.getNextLegalStates();
+                    if (n.size() > 0)
                     {
-                        ai2wins++;
+                        board.decode(n[((isPlayer1Turn) ? &ais[evalIndex] : antagonist)->selectPlay(n)]);
+                        if (!isPlayer1Turn)
+                            board.invert();
                     }
                     else
                     {
-                        ai1wins++;
-                        board.invert();
+                        if (!isPlayer1Turn)
+                        {
+                            scores[evalIndex]++;
+                            board.invert();
+                        }
+                        break;
                     }
-                    break;
                 }
             }
+            evalIndex++;
         }
 
         std::stringstream ss;
-        ss << ai1->getName() << " vs. " << ai2->getName() << ": ";
-        ss << std::fixed << std::setprecision(2) << (100.0 * ai1wins / (ai1wins + ai2wins)) << "% win rate";
+        if (evalIndex > 0)
+        {
+            ss << "gen" << genNumber << ", eval index " << evalIndex - 1 << " got a win rate of ";
+            ss << std::fixed << std::setprecision(2) << (100 * scores[evalIndex - 1] / MATCH_COUNT) << "%";
+        }
         text.setPosition({100, 800});
         text.setString(ss.str());
 

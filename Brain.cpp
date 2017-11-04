@@ -27,6 +27,13 @@ Brain::~Brain()
     cleanArrays();
 }
 
+void Brain::init(const std::vector<std::size_t>& layerSize)
+{
+    m_layerSize = layerSize;
+    cleanArrays();
+    initArrays();
+}
+
 void Brain::initArrays()
 {
     m_neuronCount = m_layerSize[0];
@@ -127,6 +134,27 @@ void Brain::randomizeAll(std::mt19937& rng)
     for (std::size_t i = 0; i < m_connectionCount; i++)
     {
         m_weights[i] = d(rng);
+    }
+}
+
+void Brain::randomize(std::mt19937& rng)
+{
+    std::uniform_int_distribution<uint32_t> uni(0, m_biasCount + m_connectionCount - 1);
+    std::uniform_int_distribution<uint32_t> countDist(1, (m_biasCount + m_connectionCount - 1) / 10);
+    uint32_t c = countDist(rng);
+    std::normal_distribution<float> d(0.0f, 1.0f);
+    for (uint32_t i = 0; i < c; i++)
+    {
+        uint32_t index = uni(rng);
+        float f = d(rng) * d(rng);
+        if (index >= m_connectionCount)
+        {
+            m_bias[index - m_connectionCount] += f;
+        }
+        else
+        {
+            m_weights[index] += f;
+        }
     }
 }
 
