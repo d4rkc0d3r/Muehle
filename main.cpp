@@ -15,6 +15,7 @@
 #include "GreedyAgent.h"
 #include "PickFirstAgent.h"
 #include "BrainAgent.h"
+#include <thread>
 
 sf::Font* Board::s_font = nullptr;
 
@@ -98,6 +99,7 @@ int main()
 
     const uint32_t POP_SIZE = 50;
     const uint32_t MATCH_COUNT = 100;
+    const uint32_t THREAD_COUNT = 10;
 
     uint32_t genNumber = 0;
     uint32_t evalIndex = 0;
@@ -168,12 +170,26 @@ int main()
             evalIndex = 0;
             tStartGen = high_resolution_clock::now();
         }
-        else
+
         {
             EncodedBoard ret;
-            evaluate(&ais[evalIndex], &antagonist[evalIndex], &scores[evalIndex], MATCH_COUNT, &ret);
+            EncodedBoard trash;
+            uint32_t actualThreadCount = (THREAD_COUNT < POP_SIZE - evalIndex) ? THREAD_COUNT : POP_SIZE - evalIndex;
+            std::thread** threads = new std::thread*[actualThreadCount];
+            for (uint32_t i = 0; i < actualThreadCount; i++)
+            {
+                EncodedBoard* b = (i == actualThreadCount - 1) ? &ret : &trash;
+                uint32_t index = evalIndex + i;
+                threads[i] = new std::thread(evaluate, &ais[index], &antagonist[index], &scores[index], MATCH_COUNT, b);
+            }
+            for (uint32_t i = 0; i < actualThreadCount; i++)
+            {
+                threads[i]->join();
+                delete threads[i];
+            }
+            delete[] threads;
             board.decode(ret);
-            evalIndex++;
+            evalIndex += actualThreadCount;
         }
 
         std::stringstream ss;
