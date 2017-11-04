@@ -12,6 +12,8 @@ class GreedyAgent : public AIAgent
         GreedyAgent(unsigned int seed, int recursiveLevel);
         virtual ~GreedyAgent();
 
+        void init(unsigned int seed, int recursiveLevel);
+
         virtual std::string getName();
         virtual int selectPlay(const std::vector<EncodedBoard>& choices);
     protected:

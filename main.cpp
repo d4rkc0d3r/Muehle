@@ -97,8 +97,8 @@ int main()
     std::mt19937 rng;
     rng.seed(0);
 
-    const uint32_t POP_SIZE = 50;
-    const uint32_t MATCH_COUNT = 100;
+    const uint32_t POP_SIZE = 100;
+    const uint32_t MATCH_COUNT = 250;
     const uint32_t THREAD_COUNT = 10;
 
     uint32_t genNumber = 0;
@@ -117,6 +117,7 @@ int main()
         brains[i]->randomizeAll(rng);
         ais[i].setBrain(*brains[i]);
         scores[i] = 0;
+        antagonist[i].init(0, 1);
     }
 
     Board board;

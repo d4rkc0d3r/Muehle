@@ -24,6 +24,22 @@ GreedyAgent::GreedyAgent(unsigned int seed, int recursiveLevel)
     m_name = ss.str();
 }
 
+void GreedyAgent::init(unsigned int seed, int recursiveLevel)
+{
+    m_rng.seed(seed);
+    m_recursiveLevel = recursiveLevel;
+    if (recursiveLevel > 0)
+    {
+        std::stringstream ss;
+        ss << "MiniMax" << recursiveLevel;
+        m_name = ss.str();
+    }
+    else
+    {
+        m_name = "Greedy";
+    }
+}
+
 GreedyAgent::~GreedyAgent()
 {
     //dtor
