@@ -140,7 +140,7 @@ void Brain::randomizeAll(std::mt19937& rng)
 void Brain::randomize(std::mt19937& rng)
 {
     std::uniform_int_distribution<uint32_t> uni(0, m_biasCount + m_connectionCount - 1);
-    std::uniform_int_distribution<uint32_t> countDist(1, (m_biasCount + m_connectionCount - 1) / 10);
+    std::uniform_int_distribution<uint32_t> countDist(1, (m_biasCount + m_connectionCount - 1) / 5);
     uint32_t c = countDist(rng);
     std::normal_distribution<float> d(0.0f, 1.0f);
     for (uint32_t i = 0; i < c; i++)
