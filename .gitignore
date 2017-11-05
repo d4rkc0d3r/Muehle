@@ -1,3 +1,5 @@
+output/*
+
 # Code::Blocks files
 *.depend
 *.layout

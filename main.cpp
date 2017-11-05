@@ -44,6 +44,32 @@ void sortBrainsAndScores(Brain** brains, double* scores, uint32_t POP_SIZE)
     }
 }
 
+void saveGeneration(Brain** brains, uint32_t POP_SIZE)
+{
+    std::ofstream o("output/gen", std::ios_base::binary);
+    o.write((char*)&POP_SIZE, sizeof(uint32_t));
+    for (uint32_t i = 0; i < POP_SIZE; i++)
+    {
+        brains[i]->save(o);
+    }
+}
+
+void loadGeneration(Brain** brains, uint32_t POP_SIZE)
+{
+    std::ifstream in("output/gen", std::ios_base::binary);
+    uint32_t s;
+    in.read((char*)&s, sizeof(uint32_t));
+    if (s != POP_SIZE)
+    {
+        std::cerr << "POP_SIZE(" << POP_SIZE << ") != " << s << std::endl;
+        return;
+    }
+    for (uint32_t i = 0; i < POP_SIZE; i++)
+    {
+        brains[i]->load(in);
+    }
+}
+
 void evaluate(AIAgent* ai, AIAgent* antagonist, double* score, uint32_t MATCH_COUNT, EncodedBoard* output)
 {
     Board board;
@@ -95,7 +121,7 @@ int main()
     std::vector<std::size_t> netSize {25, 40, 25, 1};
 
     std::mt19937 rng;
-    rng.seed(0);
+    rng.seed(2);
 
     const uint32_t POP_SIZE = 100;
     const uint32_t MATCH_COUNT = 250;
@@ -132,10 +158,20 @@ int main()
                 window.close();
             else if (event.type == sf::Event::KeyPressed)
             {
-                if (event.key.code >= sf::Keyboard::A && event.key.code <= sf::Keyboard::Z)
-                    std::cout << (char)('A' + event.key.code) << std::endl;
-                else
-                    std::cout << event.key.code << std::endl;
+                if (event.key.code == sf::Keyboard::S)
+                {
+                    saveGeneration(brains, POP_SIZE);
+                }
+                else if (event.key.code == sf::Keyboard::L)
+                {
+                    loadGeneration(brains, POP_SIZE);
+                    for(uint32_t i = 0; i < POP_SIZE; i++)
+                    {
+                        ais[i].setBrain(*brains[i]);
+                        scores[i] = 0;
+                    }
+                    evalIndex = 0;
+                }
             }
             else if (event.type == sf::Event::MouseButtonPressed)
             {
