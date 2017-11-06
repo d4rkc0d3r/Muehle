@@ -44,9 +44,9 @@ void sortBrainsAndScores(Brain** brains, double* scores, uint32_t POP_SIZE)
     }
 }
 
-void saveGeneration(Brain** brains, uint32_t POP_SIZE)
+void saveGeneration(Brain** brains, uint32_t POP_SIZE, std::string fileName)
 {
-    std::ofstream o("output/gen", std::ios_base::binary);
+    std::ofstream o("output/" + fileName, std::ios_base::binary);
     o.write((char*)&POP_SIZE, sizeof(uint32_t));
     for (uint32_t i = 0; i < POP_SIZE; i++)
     {
@@ -118,7 +118,7 @@ int main()
     sf::Text text;
     text.setFont(font);
 
-    std::vector<std::size_t> netSize {25, 40, 25, 1};
+    std::vector<std::size_t> netSize {25, 30, 15, 1};
 
     std::mt19937 rng;
     rng.seed(2);
@@ -131,6 +131,8 @@ int main()
     uint32_t evalIndex = 0;
 
     high_resolution_clock::time_point tStartGen = high_resolution_clock::now();
+
+    double lastMedianScore = 0;
 
     Brain** brains = new Brain*[POP_SIZE];
     double* scores = new double[POP_SIZE];
@@ -160,7 +162,14 @@ int main()
             {
                 if (event.key.code == sf::Keyboard::S)
                 {
-                    saveGeneration(brains, POP_SIZE);
+                    std::stringstream ss;
+                    for (uint32_t i = 0; i < netSize.size() - 1; i++)
+                    {
+                        ss << netSize[i] << "-";
+                    }
+                    ss << netSize[netSize.size() - 1];
+                    ss << "_" << lastMedianScore << "%.gen";
+                    saveGeneration(brains, POP_SIZE, ss.str());
                 }
                 else if (event.key.code == sf::Keyboard::L)
                 {
@@ -185,6 +194,9 @@ int main()
         {
             duration<double> time_span = duration_cast<duration<double>>(high_resolution_clock::now() - tStartGen);
             sortBrainsAndScores(brains, scores, POP_SIZE);
+
+            lastMedianScore = (100 * scores[POP_SIZE / 2] / MATCH_COUNT);
+
             std::cout << "gen" << genNumber << " finished in " << time_span.count() << "s\n";
             std::cout << " + " << (100 * scores[0] / MATCH_COUNT) << "% win rate\n";
             std::cout << " ~ " << (100 * scores[POP_SIZE / 2] / MATCH_COUNT) << "% win rate\n";
