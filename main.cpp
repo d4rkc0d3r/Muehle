@@ -118,7 +118,7 @@ int main()
     sf::Text text;
     text.setFont(font);
 
-    std::vector<std::size_t> netSize {25, 30, 15, 1};
+    std::vector<std::size_t> netSize {25, 16, 8, 1};
 
     std::mt19937 rng;
     rng.seed(2);
@@ -126,6 +126,7 @@ int main()
     const uint32_t POP_SIZE = 100;
     const uint32_t MATCH_COUNT = 250;
     const uint32_t THREAD_COUNT = 10;
+    const uint32_t SURVIVORS = POP_SIZE / 5;
 
     uint32_t genNumber = 0;
     uint32_t evalIndex = 0;
@@ -203,9 +204,9 @@ int main()
             std::cout << " - " << (100 * scores[POP_SIZE - 1] / MATCH_COUNT) << "% win rate\n";
             std::cout << std::endl;
 
-            for(uint32_t i = POP_SIZE / 2; i < POP_SIZE; i++)
+            for(uint32_t i = SURVIVORS; i < POP_SIZE; i++)
             {
-                *brains[i] = *brains[i - POP_SIZE / 2];
+                *brains[i] = *brains[i % SURVIVORS];
             }
 
             for(uint32_t i = 0; i < POP_SIZE; i++)
