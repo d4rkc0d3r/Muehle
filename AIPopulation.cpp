@@ -9,7 +9,7 @@ using namespace std;
 
 AIPopulation::AIPopulation()
 {
-    m_matchCount = 100;
+    m_matchCount = 1000;
     m_size = 128;
     m_nextSeed = 0;
     m_threadCount = 8;
@@ -38,13 +38,16 @@ void AIPopulation::reInitialize()
     m_scores.clear();
     m_medianScoreHistory.clear();
     m_highestScoreHistory.clear();
+    m_rng.seed(m_nextSeed);
     for (uint32_t i = 0; i < m_size; i++)
     {
         m_antagonists.push_back(m_createAntagonist());
         m_brains.push_back(new Brain(m_netLayerSize));
+        m_brains[i]->randomizeAll(m_rng);
         m_agents.push_back(new BrainAgent(*m_brains[i]));
         m_scores.push_back(0.0f);
     }
+    m_genNumber = 0;
 }
 
 void AIPopulation::sortByScore()

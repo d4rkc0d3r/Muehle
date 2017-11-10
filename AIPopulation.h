@@ -24,6 +24,12 @@ class AIPopulation
         void setSurvivorCount(uint32_t val) { m_survivorCount = val; }
         void setAntagonistSpawner(AIAgent* (*foo)()) { m_createAntagonist = foo; }
         void setSeed(uint32_t seed) { m_nextSeed = seed; }
+        void reInitialize();
+        void setNetLayerSizes(const std::vector<std::size_t>& netSizes) { m_netLayerSize = netSizes; }
+
+        uint32_t getGenNumber() { return m_genNumber; }
+
+        std::vector<double> getScores() { return m_scores; }
 
         void evalGeneration();
         void createNextGeneration();
@@ -53,8 +59,6 @@ class AIPopulation
         std::vector<double> m_highestScoreHistory;
 
         std::vector<std::size_t> m_netLayerSize;
-
-        void reInitialize();
         void evaluateIndex(uint32_t index);
         void evaluateRange(uint32_t startIndex, uint32_t endIndex);
         void sortByScore();
