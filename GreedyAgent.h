@@ -16,6 +16,7 @@ class GreedyAgent : public AIAgent
 
         virtual std::string getName();
         virtual int selectPlay(const std::vector<EncodedBoard>& choices);
+        virtual void seed(uint32_t seed) { m_rng.seed(seed); }
     protected:
 
     private:
