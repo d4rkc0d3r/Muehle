@@ -22,6 +22,8 @@ class Brain
         void think();
         void getOutputNeurons(float* output);
 
+        std::vector<std::size_t> getLayerSizes();
+
         Brain& operator=(const Brain& b);
 
         void randomizeAll(std::mt19937& rng);

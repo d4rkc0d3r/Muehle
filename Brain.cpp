@@ -174,6 +174,11 @@ void Brain::getOutputNeurons(float* output)
     std::memcpy(output, m_neurons + (m_neuronCount - lastLayerSize), sizeof(float) * lastLayerSize);
 }
 
+std::vector<std::size_t> Brain::getLayerSizes()
+{
+    return m_layerSize;
+}
+
 void Brain::draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos)
 {
     float neuronRadius = 25;
