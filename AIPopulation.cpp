@@ -205,35 +205,15 @@ void AIPopulation::finalizeEvaluation()
         m_threads[i] = nullptr;
     }
     sortByScore();
-    m_medianScoreHistory.push_back(m_scores[m_size / 2]);
-    m_highestScoreHistory.push_back(m_scores[0]);
+    m_medianScoreHistory.push_back(m_scores[m_size / 2] / m_matchCount);
+    m_highestScoreHistory.push_back(m_scores[0] / m_matchCount);
     m_nextSeed = m_rng();
 }
 
 void AIPopulation::evalGeneration()
 {
-    uint32_t actualThreadCount = (m_threadCount < m_size) ? m_threadCount : m_size;
-    thread** threads = new thread*[actualThreadCount];
-    for (uint32_t i = 0; i < actualThreadCount; i++)
-    {
-        uint32_t startIndex = m_size * (i) / actualThreadCount;
-        uint32_t endIndex = m_size * (i + 1) / actualThreadCount;
-        threads[i] = new thread(AIPopulation::evaluateRange, this, startIndex, endIndex, -1);
-    }
-    for (uint32_t i = 0; i < actualThreadCount; i++)
-    {
-        threads[i]->join();
-        delete threads[i];
-    }
-    delete[] threads;
-    for (uint32_t i = 0; i < m_threadCount; i++)
-    {
-        m_progress[i] = 1.0;
-    }
-    sortByScore();
-    m_medianScoreHistory.push_back(m_scores[m_size / 2]);
-    m_highestScoreHistory.push_back(m_scores[0]);
-    m_nextSeed = m_rng();
+    evalGenerationAsync();
+    finalizeEvaluation();
 }
 
 void AIPopulation::draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos, const sf::Vector2<float>& s)
