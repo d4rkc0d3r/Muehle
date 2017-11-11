@@ -102,6 +102,8 @@ void AIPopulation::sortByScore()
 
 void AIPopulation::evaluateRange(uint32_t startIndex, uint32_t endIndex, uint32_t threadIndex)
 {
+    if (threadIndex >= 0)
+        m_progress[threadIndex] = 0.0;
     for (uint32_t index = startIndex; index < endIndex; index++)
     {
         AIAgent* ai = m_agents[index];
@@ -138,7 +140,9 @@ void AIPopulation::evaluateRange(uint32_t startIndex, uint32_t endIndex, uint32_
                 }
             }
             if (threadIndex >= 0)
-                m_progress[threadIndex] = ((double)index - startIndex) * m_matchCount + i / (endIndex - startIndex) * m_matchCount;
+            {
+                m_progress[threadIndex] += 1.0 / ((endIndex - startIndex) * m_matchCount);
+            }
         }
     }
     if (threadIndex >= 0)
@@ -230,6 +234,25 @@ void AIPopulation::evalGeneration()
     m_medianScoreHistory.push_back(m_scores[m_size / 2]);
     m_highestScoreHistory.push_back(m_scores[0]);
     m_nextSeed = m_rng();
+}
+
+void AIPopulation::draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos, const sf::Vector2<float>& s)
+{
+    float verticalOffset = 0.0f;
+    float progressBarHeight = 20.0f;
+    float progressBarGap = 10.0f;
+    sf::RectangleShape rect;
+    for (uint32_t i = 0; i < m_threadCount; i++)
+    {
+        rect.setFillColor(sf::Color(127, 127, 127));
+        rect.setPosition(pos.x, pos.y + verticalOffset);
+        rect.setSize({s.x, progressBarHeight});
+        renderTarget.draw(rect);
+        rect.setFillColor(sf::Color::Green);
+        rect.setSize({s.x * (float)m_progress[i], progressBarHeight});
+        renderTarget.draw(rect);
+        verticalOffset += progressBarHeight + progressBarGap;
+    }
 }
 
 void AIPopulation::load(string fileName)

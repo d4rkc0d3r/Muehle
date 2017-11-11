@@ -5,6 +5,7 @@
 #include <string>
 #include <random>
 #include <thread>
+#include <SFML/Graphics.hpp>
 #include "Brain.h"
 #include "BrainAgent.h"
 #include "AIAgent.h"
@@ -41,6 +42,8 @@ class AIPopulation
 
         void load(std::string fileName);
         void save(std::string fileName);
+
+        void draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos, const sf::Vector2<float>& s);
 
     protected:
 
