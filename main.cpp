@@ -38,7 +38,7 @@ int main()
     population.setMatchCount(200);
     population.setSurvivorCount(population.getSize()/3);
     population.setThreadCount(8);
-    population.setNetLayerSizes({25, 75, 25, 1});
+    population.setNetLayerSizes({25, 30, 15, 1});
     population.setAntagonistSpawner([](){return(AIAgent*)new GreedyAgent(0,1);});
     population.reInitialize();
     population.evalGenerationAsync();
@@ -87,6 +87,7 @@ int main()
 
         window.clear();
         window.draw(text);
+        population.draw(window, {800, 50}, {750, 800});
         window.display();
     }
 

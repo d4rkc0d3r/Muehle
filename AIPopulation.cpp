@@ -3,6 +3,7 @@
 #include "Board.h"
 #include <fstream>
 #include <iostream>
+#include "LineShape.h"
 
 using namespace std;
 
@@ -218,20 +219,49 @@ void AIPopulation::evalGeneration()
 
 void AIPopulation::draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos, const sf::Vector2<float>& s)
 {
-    float verticalOffset = 0.0f;
+    float verticalOffset = pos.y;
     float progressBarHeight = 20.0f;
     float progressBarGap = 10.0f;
     sf::RectangleShape rect;
     for (uint32_t i = 0; i < m_threadCount; i++)
     {
         rect.setFillColor(sf::Color(127, 127, 127));
-        rect.setPosition(pos.x, pos.y + verticalOffset);
+        rect.setPosition(pos.x, verticalOffset);
         rect.setSize({s.x, progressBarHeight});
         renderTarget.draw(rect);
         rect.setFillColor(sf::Color::Green);
         rect.setSize({s.x * (float)m_progress[i], progressBarHeight});
         renderTarget.draw(rect);
         verticalOffset += progressBarHeight + progressBarGap;
+    }
+    verticalOffset += 30.0f - progressBarGap;
+    float height = s.y + pos.y - verticalOffset;
+    rect.setFillColor(sf::Color(127, 127, 127));
+    rect.setSize({s.x, 1});
+    for (float i = 0; i <= 10; i++)
+    {
+        rect.setPosition({pos.x, verticalOffset + height * i / 10.0f});
+        renderTarget.draw(rect);
+    }
+    rect.setSize({1, height});
+    rect.setPosition({pos.x, verticalOffset});
+    renderTarget.draw(rect);
+    rect.setPosition({pos.x + s.x, verticalOffset});
+    renderTarget.draw(rect);
+    LineShape line;
+    sf::Vector2<float> lastMedian = {pos.x, verticalOffset + height};
+    sf::Vector2<float> lastHighest = {pos.x, verticalOffset + height};
+    for (uint32_t i = 0; i < m_medianScoreHistory.size(); i++)
+    {
+        float x = pos.x + s.x * (i + 1) / m_medianScoreHistory.size();
+        sf::Vector2<float> v = {x, verticalOffset + (1 - (float)m_medianScoreHistory[i]) * height };
+        line.setAll(lastMedian, v, 1, sf::Color::Red);
+        lastMedian = v;
+        line.draw(renderTarget);
+        v = {x, verticalOffset + (1 - (float)m_highestScoreHistory[i]) * height };
+        line.setAll(lastHighest, v, 1, sf::Color::Green);
+        lastHighest = v;
+        line.draw(renderTarget);
     }
 }
 
