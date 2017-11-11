@@ -1,7 +1,6 @@
 #include "AIPopulation.h"
 #include "GreedyAgent.h"
 #include "Board.h"
-#include <thread>
 #include <fstream>
 #include <iostream>
 
@@ -12,7 +11,7 @@ AIPopulation::AIPopulation()
     m_matchCount = 1000;
     m_size = 128;
     m_nextSeed = 0;
-    m_threadCount = 8;
+    setThreadCount(8);
     m_survivorCount = m_size / 3;
     m_netLayerSize = {25, 40, 25, 1};
     m_genNumber = 0;
@@ -22,9 +21,34 @@ AIPopulation::AIPopulation()
 
 AIPopulation::~AIPopulation()
 {
+    for (thread* t : m_threads)
+    {
+        if (t == nullptr)
+            continue;
+        delete t;
+    }
     for (AIAgent* a : m_antagonists) { delete a; }
     for (BrainAgent* a : m_agents) { delete a; }
     for (Brain* b : m_brains) { delete b; }
+}
+
+void AIPopulation::setThreadCount(uint32_t val)
+{
+    m_threadCount = val;
+    for (thread* t : m_threads)
+    {
+        if (t == nullptr)
+            continue;
+        t->join();
+        delete t;
+    }
+    m_threads.clear();
+    m_progress.clear();
+    for (uint32_t i = 0; i < val; i++)
+    {
+        m_progress.push_back(0.0);
+        m_threads.push_back(nullptr);
+    }
 }
 
 void AIPopulation::reInitialize()
@@ -75,55 +99,71 @@ void AIPopulation::sortByScore()
     }
 }
 
-void AIPopulation::evaluateRange(uint32_t startIndex, uint32_t endIndex)
+void AIPopulation::evaluateRange(uint32_t startIndex, uint32_t endIndex, uint32_t threadIndex)
 {
-    for (uint32_t i = startIndex; i < endIndex; i++)
+    for (uint32_t index = startIndex; index < endIndex; index++)
     {
-        evaluateIndex(i);
-    }
-}
-
-void AIPopulation::evaluateIndex(uint32_t index)
-{
-    AIAgent* ai = m_agents[index];
-    AIAgent* antagonist = m_antagonists[index];
-    Board board;
-    vector<EncodedBoard> n;
-    for (uint32_t i = 0; i < m_matchCount; i++)
-    {
-        board.decode(0);
-        while (true)
+        AIAgent* ai = m_agents[index];
+        AIAgent* antagonist = m_antagonists[index];
+        Board board;
+        vector<EncodedBoard> n;
+        for (uint32_t i = 0; i < m_matchCount; i++)
         {
-            if (board.getTurnNumber() > 1000)
+            board.decode(0);
+            while (true)
             {
-                break;
-            }
-            bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;
-            if (!isPlayer1Turn)
-                board.invert();
-            n = board.getNextLegalStates();
-            if (n.size() > 0)
-            {
-                board.decode(n[((isPlayer1Turn) ? ai : antagonist)->selectPlay(n)]);
-                if (!isPlayer1Turn)
-                    board.invert();
-            }
-            else
-            {
-                if (!isPlayer1Turn)
+                if (board.getTurnNumber() > 1000)
                 {
-                    m_scores[index]++;
-                    board.invert();
+                    break;
                 }
-                break;
+                bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;
+                if (!isPlayer1Turn)
+                    board.invert();
+                n = board.getNextLegalStates();
+                if (n.size() > 0)
+                {
+                    board.decode(n[((isPlayer1Turn) ? ai : antagonist)->selectPlay(n)]);
+                    if (!isPlayer1Turn)
+                        board.invert();
+                }
+                else
+                {
+                    if (!isPlayer1Turn)
+                    {
+                        m_scores[index]++;
+                        board.invert();
+                    }
+                    break;
+                }
             }
+            if (threadIndex >= 0)
+                m_progress[threadIndex] = ((double)index - startIndex) * m_matchCount + i / (endIndex - startIndex) * m_matchCount;
         }
     }
+    if (threadIndex >= 0)
+        m_progress[threadIndex] = 1.0;
+}
+
+bool AIPopulation::isDoneEvaluatingGeneration()
+{
+    for (double progress : m_progress)
+    {
+        if (progress != 1.0)
+            return false;
+    }
+    return true;
 }
 
 void AIPopulation::createNextGeneration()
 {
+    if (!isDoneEvaluatingGeneration())
+        return;
+
     m_rng.seed(m_nextSeed);
+    for (uint32_t i = 0; i < m_threadCount; i++)
+    {
+        m_progress[i] = 0.0;
+    }
 
     for(uint32_t i = m_survivorCount; i < m_size; i++)
     {
@@ -141,6 +181,30 @@ void AIPopulation::createNextGeneration()
     m_genNumber++;
 }
 
+void AIPopulation::evalGenerationAsync()
+{
+    for (uint32_t i = 0; i < m_threadCount; i++)
+    {
+        uint32_t startIndex = m_size * (i) / m_threadCount;
+        uint32_t endIndex = m_size * (i + 1) / m_threadCount;
+        m_threads[i] = new thread(AIPopulation::evaluateRange, this, startIndex, endIndex, i);
+    }
+}
+
+void AIPopulation::finalizeEvaluation()
+{
+    for (uint32_t i = 0; i < m_threadCount; i++)
+    {
+        m_threads[i]->join();
+        delete m_threads[i];
+        m_threads[i] = nullptr;
+    }
+    sortByScore();
+    m_medianScoreHistory.push_back(m_scores[m_size / 2]);
+    m_highestScoreHistory.push_back(m_scores[0]);
+    m_nextSeed = m_rng();
+}
+
 void AIPopulation::evalGeneration()
 {
     uint32_t actualThreadCount = (m_threadCount < m_size) ? m_threadCount : m_size;
@@ -149,7 +213,7 @@ void AIPopulation::evalGeneration()
     {
         uint32_t startIndex = m_size * (i) / actualThreadCount;
         uint32_t endIndex = m_size * (i + 1) / actualThreadCount;
-        threads[i] = new thread(AIPopulation::evaluateRange, this, startIndex, endIndex);
+        threads[i] = new thread(AIPopulation::evaluateRange, this, startIndex, endIndex, -1);
     }
     for (uint32_t i = 0; i < actualThreadCount; i++)
     {
@@ -157,6 +221,10 @@ void AIPopulation::evalGeneration()
         delete threads[i];
     }
     delete[] threads;
+    for (uint32_t i = 0; i < m_threadCount; i++)
+    {
+        m_progress[i] = 1.0;
+    }
     sortByScore();
     m_medianScoreHistory.push_back(m_scores[m_size / 2]);
     m_highestScoreHistory.push_back(m_scores[0]);

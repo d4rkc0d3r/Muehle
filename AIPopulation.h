@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <random>
+#include <thread>
 #include "Brain.h"
 #include "BrainAgent.h"
 #include "AIAgent.h"
@@ -17,7 +18,7 @@ class AIPopulation
         uint32_t getSize() { return m_size; }
         void setSize(uint32_t val) { m_size = val; }
         uint32_t getThreadCount() { return m_threadCount; }
-        void setThreadCount(uint32_t val) { m_threadCount = val; }
+        void setThreadCount(uint32_t val);
         uint32_t getMatchCount() { return m_matchCount; }
         void setMatchCount(uint32_t val) { m_matchCount = val; }
         uint32_t getSurvivorCount() { return m_survivorCount; }
@@ -27,11 +28,15 @@ class AIPopulation
         void reInitialize();
         void setNetLayerSizes(const std::vector<std::size_t>& netSizes) { m_netLayerSize = netSizes; }
 
+        bool isDoneEvaluatingGeneration();
+
         uint32_t getGenNumber() { return m_genNumber; }
 
         std::vector<double> getScores() { return m_scores; }
 
         void evalGeneration();
+        void evalGenerationAsync();
+        void finalizeEvaluation();
         void createNextGeneration();
 
         void load(std::string fileName);
@@ -57,10 +62,11 @@ class AIPopulation
         std::vector<double> m_scores;
         std::vector<double> m_medianScoreHistory;
         std::vector<double> m_highestScoreHistory;
+        std::vector<double> m_progress;
+        std::vector<std::thread*> m_threads;
 
         std::vector<std::size_t> m_netLayerSize;
-        void evaluateIndex(uint32_t index);
-        void evaluateRange(uint32_t startIndex, uint32_t endIndex);
+        void evaluateRange(uint32_t startIndex, uint32_t endIndex, uint32_t threadIndex);
         void sortByScore();
 };
 

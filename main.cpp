@@ -34,13 +34,16 @@ int main()
 
     AIPopulation population;
     population.setSeed(0);
-    population.setSize(64);
+    population.setSize(96);
     population.setMatchCount(200);
     population.setSurvivorCount(population.getSize()/3);
     population.setThreadCount(8);
-    population.setNetLayerSizes({25, 16, 1});
-    population.setAntagonistSpawner([](){return(AIAgent*)new GreedyAgent();});
+    population.setNetLayerSizes({25, 75, 25, 1});
+    population.setAntagonistSpawner([](){return(AIAgent*)new GreedyAgent(0,1);});
     population.reInitialize();
+    population.evalGenerationAsync();
+
+    int frameCounter = 0;
 
     Board board;
     board.decode(0);
@@ -62,18 +65,23 @@ int main()
             }
         }
 
-        population.evalGeneration();
+        if (population.isDoneEvaluatingGeneration())
+        {
+            population.finalizeEvaluation();
 
-        vector<double> scores = population.getScores();
-        uint32_t matches = population.getMatchCount();
-        cout << "gen" << population.getGenNumber() << ":\n";
-        cout << " + " << (100 * scores[0] / matches) << "% win rate\n";
-        cout << " ~ " << (100 * scores[population.getSize() / 2] / matches) << "% win rate\n";
-        cout << " - " << (100 * scores[population.getSize() - 1] / matches) << "% win rate\n";
+            vector<double> scores = population.getScores();
+            uint32_t matches = population.getMatchCount();
+            cout << "gen" << population.getGenNumber() << ":\n";
+            cout << " + " << (100 * scores[0] / matches) << "% win rate\n";
+            cout << " ~ " << (100 * scores[population.getSize() / 2] / matches) << "% win rate\n";
+            cout << " - " << (100 * scores[population.getSize() - 1] / matches) << "% win rate\n";
 
-        population.createNextGeneration();
+            population.createNextGeneration();
+            population.evalGenerationAsync();
+        }
 
         stringstream ss;
+        ss << frameCounter++;
         text.setPosition({100, 800});
         text.setString(ss.str());
 
@@ -81,6 +89,8 @@ int main()
         window.draw(text);
         window.display();
     }
+
+    population.finalizeEvaluation();
 
     return 0;
 }
