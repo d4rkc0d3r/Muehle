@@ -44,7 +44,7 @@ void AIPopulation::setThreadCount(uint32_t val)
     }
     m_threads.clear();
     m_progress.clear();
-    for (uint32_t i = 0; i < val; i++)
+    for (uint32_t i = 0; i < m_threadCount; i++)
     {
         m_progress.push_back(0.0);
         m_threads.push_back(nullptr);
@@ -72,6 +72,7 @@ void AIPopulation::reInitialize()
         m_scores.push_back(0.0f);
     }
     m_genNumber = 0;
+    setThreadCount(m_threadCount);
 }
 
 void AIPopulation::sortByScore()
@@ -246,6 +247,7 @@ void AIPopulation::load(string fileName)
         for (uint32_t i = 0; i < m_size; i++)
         {
             m_brains[i]->load(in);
+            m_agents[i]->setBrain(*m_brains[i]);
         }
         m_netLayerSize = m_brains[0]->getLayerSizes();
     }
@@ -275,6 +277,7 @@ void AIPopulation::load(string fileName)
             for (uint32_t i = 0; i < m_size; i++)
             {
                 m_brains[i]->load(in);
+                m_agents[i]->setBrain(*m_brains[i]);
             }
             m_netLayerSize = m_brains[0]->getLayerSizes();
             break; }
