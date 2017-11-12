@@ -24,6 +24,8 @@ class AIPopulation
         void setMatchCount(uint32_t val) { m_matchCount = val; }
         uint32_t getSurvivorCount() { return m_survivorCount; }
         void setSurvivorCount(uint32_t val) { m_survivorCount = val; }
+        uint32_t getNonMutatedCount() { return m_nonMutatedCount; }
+        void setNonMutatedCount(uint32_t val) { m_nonMutatedCount = val; }
         void setAntagonistSpawner(AIAgent* (*foo)()) { m_createAntagonist = foo; }
         void setSeed(uint32_t seed) { m_nextSeed = seed; }
         void reInitialize();
@@ -55,6 +57,7 @@ class AIPopulation
         uint32_t m_survivorCount;
         uint32_t m_genNumber;
         uint32_t m_nextSeed;
+        uint32_t m_nonMutatedCount;
 
         AIAgent* (*m_createAntagonist)();
 

@@ -17,6 +17,7 @@ AIPopulation::AIPopulation()
     m_survivorCount = m_size / 3;
     m_netLayerSize = {25, 40, 25, 1};
     m_genNumber = 0;
+    m_nonMutatedCount = 0;
     m_createAntagonist = []() { return (AIAgent*) new GreedyAgent(0, 1); };
     reInitialize();
 }
@@ -177,9 +178,13 @@ void AIPopulation::createNextGeneration()
         *m_brains[i] = *m_brains[i % m_survivorCount];
     }
 
-    for(uint32_t i = 0; i < m_size; i++)
+    for(uint32_t i = m_nonMutatedCount; i < m_size; i++)
     {
         m_brains[i]->randomize(m_rng);
+    }
+
+    for(uint32_t i = 0; i < m_size; i++)
+    {
         m_agents[i]->setBrain(*m_brains[i]);
         m_scores[i] = 0;
         m_antagonists[i]->seed(m_rng());
@@ -307,7 +312,8 @@ void AIPopulation::load(string fileName)
             in.read((char*)buffer, 4 * sizeof(uint32_t));
             m_size = buffer[0];
             m_nextSeed = buffer[2];
-            m_survivorCount = buffer[3];
+            m_survivorCount = buffer[3] & 0xFFFF;
+            m_nonMutatedCount = buffer[3] >> 16;
             reInitialize();
             m_genNumber = buffer[1];
             for (uint32_t i = 0; i <= m_genNumber; i++)
@@ -344,11 +350,12 @@ void AIPopulation::save(string fileName)
 {
     ofstream o("output/" + fileName, ios_base::binary);
     uint32_t versionNumber = (1U << 31) | 1;
+    uint32_t fused = m_survivorCount | (m_nonMutatedCount << 16);
     o.write((char*)&versionNumber, sizeof(uint32_t));
     o.write((char*)&m_size, sizeof(uint32_t));
     o.write((char*)&m_genNumber, sizeof(uint32_t));
     o.write((char*)&m_nextSeed, sizeof(uint32_t));
-    o.write((char*)&m_survivorCount, sizeof(uint32_t));
+    o.write((char*)&fused, sizeof(uint32_t));
     for (uint32_t i = 0; i <= m_genNumber; i++)
     {
         o.write((char*)&m_highestScoreHistory[i], sizeof(double));
