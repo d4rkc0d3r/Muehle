@@ -37,6 +37,8 @@ class AIPopulation
 
         std::vector<double> getScores() { return m_scores; }
 
+        void copyBestBrain(Brain* b) { *b = *m_brains[0]; }
+
         void evalGeneration();
         void evalGenerationAsync();
         void finalizeEvaluation();
