@@ -40,6 +40,7 @@ class AIPopulation
         void finalizeEvaluation();
         void createNextGeneration();
 
+        void autoSave();
         void load(std::string fileName);
         void save(std::string fileName);
 

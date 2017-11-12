@@ -3,6 +3,7 @@
 #include "Board.h"
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include "LineShape.h"
 
 using namespace std;
@@ -265,6 +266,19 @@ void AIPopulation::draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>
     }
 }
 
+void AIPopulation::autoSave()
+{
+    stringstream ss;
+    for (uint32_t i = 0; i < m_netLayerSize.size() - 1; i++)
+    {
+        ss << m_netLayerSize[i] << '-';
+    }
+    ss << m_netLayerSize[m_netLayerSize.size() - 1] << '_';
+    ss << (m_medianScoreHistory[m_medianScoreHistory.size() - 1] * 100) << "%_vs_";
+    ss << m_antagonists[0]->getName() << "_" << m_genNumber << ".gen";
+    save(ss.str());
+}
+
 void AIPopulation::load(string fileName)
 {
     ifstream in("output/" + fileName, ios_base::binary);
@@ -292,16 +306,17 @@ void AIPopulation::load(string fileName)
             uint32_t buffer[4];
             in.read((char*)buffer, 4 * sizeof(uint32_t));
             m_size = buffer[0];
-            m_genNumber = buffer[1];
             m_nextSeed = buffer[2];
             m_survivorCount = buffer[3];
             reInitialize();
+            m_genNumber = buffer[1];
             for (uint32_t i = 0; i <= m_genNumber; i++)
             {
-                double d[2];
-                in.read((char*)d, 2 * sizeof(double));
-                m_highestScoreHistory.push_back(d[0]);
-                m_medianScoreHistory.push_back(d[1]);
+                double d;
+                in.read((char*)&d, sizeof(double));
+                m_highestScoreHistory.push_back(d);
+                in.read((char*)&d, sizeof(double));
+                m_medianScoreHistory.push_back(d);
             }
             for (uint32_t i = 0; i < m_size; i++)
             {
