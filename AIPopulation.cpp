@@ -334,6 +334,10 @@ void AIPopulation::load(string fileName)
             break;
         }
     }
+    for (uint32_t i = 0; i < m_threadCount; i++)
+    {
+        m_progress[i] = 1.0;
+    }
 }
 
 void AIPopulation::save(string fileName)
