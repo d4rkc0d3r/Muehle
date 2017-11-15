@@ -76,7 +76,8 @@ int negamax(EncodedBoard eb, int depth, int color)
     if (color < 0)
         eb = Board::invert(eb);
     b.decode(eb);
-    std::vector<EncodedBoard> n = b.getNextLegalStates();
+    std::vector<EncodedBoard> n;
+    b.getNextLegalStates(n);
     int bestValue = -24;
     for(std::size_t i = 0; i < n.size(); i++)
     {

@@ -5,13 +5,12 @@
 
 Board::Board()
 {
-    m_field = new float[25];
     m_activeRounds = 0;
 }
 
 Board::~Board()
 {
-    delete [] m_field;
+
 }
 
 void Board::invert()
@@ -78,6 +77,46 @@ bool Board::isPartOfMill(unsigned int i, float player)
     }
 }
 
+bool Board::fillMillMap(float player, bool* millMap)
+{
+    for(int i = 0; i < 24; i += 2)
+    {
+        millMap[i] = false;
+    }
+
+    for(int i = 0; i < 24; i += 2)
+    {
+        if (m_field[i] != player || m_field[i + 1] != player)
+            continue;
+        uint32_t nextCornerIndex = (i + 2) % 8 + i / 8 * 8;
+        if (m_field[nextCornerIndex] != player)
+        {
+            if (i % 8 != 6)
+                i += 2;
+            continue;
+        }
+        millMap[i] = true;
+        millMap[i + 1] = true;
+        millMap[nextCornerIndex] = true;
+    }
+
+    for(int i = 1; i < 8; i += 2)
+    {
+        bool mill = (m_field[i] == player && m_field[i + 8] == player && m_field[i + 16] == player);
+        millMap[i] = mill;
+        millMap[i + 8] = mill;
+        millMap[i + 16] = mill;
+    }
+
+    for(int i = 0; i < 24; i++)
+    {
+        if (m_field[i] == player && !millMap[i])
+            return true;
+    }
+
+    return false;
+}
+
 void Board::tryMoveTo(unsigned int from, unsigned int to, Board& next, std::vector<EncodedBoard>& result)
 {
     unsigned int i = from;
@@ -89,12 +128,7 @@ void Board::tryMoveTo(unsigned int from, unsigned int to, Board& next, std::vect
     if(next.isPartOfMill(n, BLUE))
     {
         bool isInEnemyMill[24];
-        bool enemyHasStoneNotInMill = false;
-        for(int j = 0; j < 24; j++)
-        {
-            isInEnemyMill[j] = next.isPartOfMill(j, RED);
-            enemyHasStoneNotInMill |= (next.m_field[j] == RED && !isInEnemyMill[j]);
-        }
+        bool enemyHasStoneNotInMill = fillMillMap(RED, isInEnemyMill);
         for(int j = 0; j < 24; j++)
         {
             if(m_field[j] == RED && (!enemyHasStoneNotInMill || !isInEnemyMill[j]))
@@ -113,11 +147,10 @@ void Board::tryMoveTo(unsigned int from, unsigned int to, Board& next, std::vect
     next.m_field[i] = BLUE;
 }
 
-std::vector<EncodedBoard> Board::getNextLegalStates()
+void Board::getNextLegalStates(std::vector<EncodedBoard>& result)
 {
     Board next;
     next.m_activeRounds = m_activeRounds + 1;
-    std::vector<EncodedBoard> result;
 
     if(m_activeRounds < 18) // phase 1, place stone
     {
@@ -130,12 +163,7 @@ std::vector<EncodedBoard> Board::getNextLegalStates()
                 if(next.isPartOfMill(i, BLUE))
                 {
                     bool isInEnemyMill[24];
-                    bool enemyHasStoneNotInMill = false;
-                    for(int j = 0; j < 24; j++)
-                    {
-                        isInEnemyMill[j] = next.isPartOfMill(j, RED);
-                        enemyHasStoneNotInMill |= (next.m_field[j] == RED && !isInEnemyMill[j]);
-                    }
+                    bool enemyHasStoneNotInMill = fillMillMap(RED, isInEnemyMill);
                     for(int j = 0; j < 24; j++)
                     {
                         if(m_field[j] == RED && (!enemyHasStoneNotInMill || !isInEnemyMill[j]))
@@ -162,7 +190,7 @@ std::vector<EncodedBoard> Board::getNextLegalStates()
             blueStoneCount += m_field[i] == BLUE;
         }
         if(blueStoneCount < 3)
-            return result;
+            return;
         // TODO implement flying when blueStoneCount == 3
         memcpy(next.m_field, m_field, sizeof(float) * 24);
         for(unsigned int i = 0; i < 24; i++)
@@ -178,7 +206,12 @@ std::vector<EncodedBoard> Board::getNextLegalStates()
             }
         }
     }
+}
 
+std::vector<EncodedBoard> Board::getNextLegalStates()
+{
+    std::vector<EncodedBoard> result;
+    getNextLegalStates(result);
     return result;
 }
 

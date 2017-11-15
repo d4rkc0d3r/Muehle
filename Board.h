@@ -19,6 +19,7 @@ class Board
 
         void invert();
 
+        void getNextLegalStates(std::vector<EncodedBoard>& result);
         std::vector<EncodedBoard> getNextLegalStates();
 
         unsigned short getTurnNumber();
@@ -36,9 +37,10 @@ class Board
 
     private:
         unsigned short m_activeRounds;
-        float* m_field;
+        float m_field[25];
 
         bool isPartOfMill(unsigned int index, float player);
+        bool fillMillMap(float player, bool* millMap);
         void tryMoveTo(unsigned int from, unsigned int to, Board& next, std::vector<EncodedBoard>& result);
 };
 
