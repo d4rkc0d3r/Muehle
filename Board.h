@@ -24,6 +24,7 @@ class Board
         unsigned short getTurnNumber();
 
         static void decode(EncodedBoard b, float* target);
+        static EncodedBoard invert(EncodedBoard b);
 
         static sf::Font* s_font;
 

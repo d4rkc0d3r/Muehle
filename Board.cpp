@@ -37,6 +37,14 @@ void Board::decode(EncodedBoard b, float* target)
     target[24] = (b < 18) ? 0.0f : 1.0f;
 }
 
+EncodedBoard Board::invert(EncodedBoard b)
+{
+    uint64_t p1 = 0x0000AAAAAAAAAAAA;
+    uint64_t p2 = 0x0000555555555555;
+    uint64_t turn = 0xFFFF000000000000;
+    return (b & turn) | ((b & p1) >> 1) | (((b & p2) << 1));
+}
+
 void Board::decode(EncodedBoard b)
 {
     decode(b, m_field);

@@ -35,19 +35,23 @@ int main()
     uint32_t matchCount = 128;
 
     AIPopulation population;
-    population.setSeed(0);
+    population.setSeed(1);
     population.setSize(128);
     population.setMatchCount(matchCount);
     population.setSurvivorCount(population.getSize()/3);
     population.setNonMutatedCount(0);
     population.setThreadCount(8);
-    population.setNetLayerSizes({25, 40, 25, 1});
+    population.setNetLayerSizes({25, 30, 15, 1});
     population.setAntagonistSpawner([](){return(AIAgent*)new GreedyAgent(0,1);});
     population.reInitialize();
     population.evalGenerationAsync();
 
     bool saveNextGen = false;
     bool loadNextGen = false;
+
+    bool showNeuralNet = false;
+    bool pause = false;
+    bool singleAiStep = false;
 
     uint32_t gamesPlayed = 0;
     uint32_t gamesWon = 0;
@@ -56,8 +60,9 @@ int main()
     board.decode(0);
 
     Brain brain({25, 30, 15, 1});
-    BrainAgent* ai = new BrainAgent(brain);
-    AIAgent* antagonist = new GreedyAgent(0, 1);
+    BrainAgent* brainAi = new BrainAgent(brain);
+    AIAgent* ai = new GreedyAgent(0,0);
+    AIAgent* antagonist = new GreedyAgent(0,3);
 
     while (window.isOpen())
     {
@@ -82,6 +87,18 @@ int main()
                 case sf::Keyboard::L:
                     loadNextGen = true;
                     break;
+                case sf::Keyboard::P:
+                    pause = !pause;
+                    break;
+                case sf::Keyboard::N:
+                    showNeuralNet = !showNeuralNet;
+                    break;
+                case sf::Keyboard::C:
+                    singleAiStep = true;
+                    break;
+                case sf::Keyboard::I:
+                    board.decode(Board::invert(board.encode()));
+                    break;
                 default:
                     break;
                 }
@@ -92,33 +109,37 @@ int main()
             }
         }
 
-        if (board.getTurnNumber() > 1000)
+        if (!pause || singleAiStep)
         {
-            gamesPlayed++;
-            board.decode(0);
-        }
-        else
-        {
-            bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;
-            if (!isPlayer1Turn)
-                board.invert();
-            vector<EncodedBoard> n = board.getNextLegalStates();
-            if (n.size() > 0)
+            if (board.getTurnNumber() > 1000)
             {
-                board.decode(n[((isPlayer1Turn) ? ai : antagonist)->selectPlay(n)]);
-                if (!isPlayer1Turn)
-                    board.invert();
-            }
-            else
-            {
-                if (!isPlayer1Turn)
-                {
-                    gamesWon++;
-                    board.invert();
-                }
                 gamesPlayed++;
                 board.decode(0);
             }
+            else
+            {
+                bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;
+                if (!isPlayer1Turn)
+                    board.invert();
+                vector<EncodedBoard> n = board.getNextLegalStates();
+                if (n.size() > 0)
+                {
+                    board.decode(n[((isPlayer1Turn) ? ai : antagonist)->selectPlay(n)]);
+                    if (!isPlayer1Turn)
+                        board.invert();
+                }
+                else
+                {
+                    if (!isPlayer1Turn)
+                    {
+                        gamesWon++;
+                        board.invert();
+                    }
+                    gamesPlayed++;
+                    board.decode(0);
+                }
+            }
+            singleAiStep = false;
         }
 
         if (population.isDoneEvaluatingGeneration())
@@ -133,8 +154,7 @@ int main()
             cout << " - " << (100 * scores[population.getSize() - 1] / matches) << "% win rate\n";
 
             population.copyBestBrain(&brain);
-            ai->setBrain(brain);
-            board.decode(0);
+            brainAi->setBrain(brain);
             gamesPlayed = 0;
             gamesWon = 0;
 
@@ -156,17 +176,24 @@ int main()
         }
 
         stringstream ss;
-        if (gamesPlayed > 0)
-        {
-            ss << ai->getName() << " vs. " << antagonist->getName() << " has a " << (100.0 * gamesWon / gamesPlayed) << "% win rate";
-        }
+        double winRate = (gamesPlayed > 0) ? (100.0 * gamesWon / gamesPlayed) : 0;
+        ss << ai->getName() << " vs. " << antagonist->getName() << " has a " << winRate << "% win rate";
         text.setPosition({50, 800});
         text.setString(ss.str());
 
         window.clear();
         window.draw(text);
         board.draw(window, {50, 50});
-        population.draw(window, {800, 50}, {750, 800});
+        if (showNeuralNet)
+        {
+            brain.setInputNeurons(board.encode());
+            brain.think();
+            brain.draw(window, {800, 50});
+        }
+        else
+        {
+            population.draw(window, {800, 50}, {750, 800});
+        }
         window.display();
     }
 

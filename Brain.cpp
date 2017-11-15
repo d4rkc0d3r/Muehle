@@ -181,9 +181,9 @@ std::vector<std::size_t> Brain::getLayerSizes()
 
 void Brain::draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos)
 {
-    float neuronRadius = 25;
+    float neuronRadius = 12;
     float gapX = 150;
-    float gapY = 70;
+    float gapY = 26;
 
     LineShape line;
     sf::CircleShape circle(neuronRadius, 32);
