@@ -231,6 +231,7 @@ void Brain::backPropagation(const std::vector<TrainingSample>& trainingData, flo
                         * (neuronLayer[j] == 0 ? 0 : 1)
                         * targetLayerActivationDerivative[j];
                 }
+                nextLayerActivationDerivative.push_back(nextActivationDerivative);
                 wGradient = wGradient + m_layerSize[layer];
                 pWeight = pWeight + m_layerSize[layer];
             }
