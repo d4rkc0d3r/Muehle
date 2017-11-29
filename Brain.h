@@ -6,6 +6,12 @@
 #include "Board.h"
 #include <random>
 
+struct TrainingSample
+{
+    std::vector<float> input;
+    std::vector<float> output;
+};
+
 class Brain
 {
     public:
@@ -17,10 +23,12 @@ class Brain
 
         void draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos);
 
-        void setInputNeurons(float* input);
+        void setInputNeurons(const float* input);
         void setInputNeurons(EncodedBoard b);
         void think();
         void getOutputNeurons(float* output);
+
+        void backPropagation(const std::vector<TrainingSample>& trainingData, float stepSize);
 
         std::vector<std::size_t> getLayerSizes();
 

@@ -205,6 +205,8 @@ void AIPopulation::evalGenerationAsync()
 
 void AIPopulation::finalizeEvaluation()
 {
+    if (m_threads[0] == nullptr)
+        return;
     for (uint32_t i = 0; i < m_threadCount; i++)
     {
         m_threads[i]->join();

@@ -158,7 +158,104 @@ void Brain::randomize(std::mt19937& rng)
     }
 }
 
-void Brain::setInputNeurons(float* input)
+void Brain::backPropagation(const std::vector<TrainingSample>& trainingData, float stepSize)
+{
+    uint32_t outputLayerSize = m_layerSize[m_layerSize.size() - 1];
+    float* outputNeurons = &m_neurons[m_neuronCount - outputLayerSize];
+    float* weightGradient = new float[m_connectionCount];
+    float* biasGradient = new float[m_biasCount];
+    for (uint32_t i = 0; i < m_connectionCount; i++)
+    {
+        weightGradient[i] = 0;
+    }
+    for (uint32_t i = 0; i < m_biasCount; i++)
+    {
+        biasGradient[i] = 0;
+    }
+    for (uint32_t trainingIndex = 0; trainingIndex < trainingData.size(); trainingIndex++)
+    {
+        const TrainingSample& sample = trainingData[trainingIndex];
+        setInputNeurons(&sample.input[0]);
+        think();
+        std::vector<float> targetLayerActivationDerivative;
+        std::vector<float> nextLayerActivationDerivative;
+        for (uint32_t i = 0; i < outputLayerSize; i++)
+        {
+            targetLayerActivationDerivative.push_back(outputNeurons[i] - sample.output[i]);
+        }
+        float* wGradient = &weightGradient[m_connectionCount];
+        float* pWeight = &m_weights[m_connectionCount];
+        float* neuronLayer = &m_neurons[m_neuronCount];
+        {
+            uint32_t layer = m_layerSize.size() - 1;
+            wGradient = wGradient - (m_layerSize[layer] * m_layerSize[layer - 1]);
+            pWeight = pWeight - (m_layerSize[layer] * m_layerSize[layer - 1]);
+            neuronLayer = neuronLayer - m_layerSize[layer];
+            float* prevNeuronLayer = neuronLayer - m_layerSize[layer - 1];
+            for (uint32_t k = 0; k < m_layerSize[layer - 1]; k++)
+            {
+                float nextActivationDerivative = 0;
+                for (uint32_t j = 0; j < m_layerSize[layer]; j++)
+                {
+                    wGradient[j] += prevNeuronLayer[k] * targetLayerActivationDerivative[j];
+                    nextActivationDerivative += pWeight[j] * targetLayerActivationDerivative[j];
+                }
+                nextLayerActivationDerivative.push_back(nextActivationDerivative);
+                wGradient = wGradient + m_layerSize[layer];
+                pWeight = pWeight + m_layerSize[layer];
+            }
+            targetLayerActivationDerivative = std::move(nextLayerActivationDerivative);
+            nextLayerActivationDerivative.clear();
+        }
+        float* biasLayer = &m_bias[m_biasCount];
+        float* bGradient = &biasGradient[m_biasCount];
+        for (uint32_t layer = m_layerSize.size() - 2; layer > 0; layer--)
+        {
+            wGradient = wGradient - (m_layerSize[layer] * m_layerSize[layer - 1]);
+            pWeight = pWeight - (m_layerSize[layer] * m_layerSize[layer - 1]);
+            neuronLayer = neuronLayer - m_layerSize[layer];
+            biasLayer = biasLayer - m_layerSize[layer];
+            bGradient = bGradient - m_layerSize[layer];
+            float* prevNeuronLayer = neuronLayer - m_layerSize[layer - 1];
+            for (uint32_t k = 0; k < m_layerSize[layer - 1]; k++)
+            {
+                float nextActivationDerivative = 0;
+                for (uint32_t j = 0; j < m_layerSize[layer]; j++)
+                {
+                    wGradient[j] +=
+                        prevNeuronLayer[k]
+                        * (neuronLayer[j] == 0 ? 0 : 1)
+                        * targetLayerActivationDerivative[j];
+                    nextActivationDerivative +=
+                        pWeight[j]
+                        * (neuronLayer[j] == 0 ? 0 : 1)
+                        * targetLayerActivationDerivative[j];
+                }
+                wGradient = wGradient + m_layerSize[layer];
+                pWeight = pWeight + m_layerSize[layer];
+            }
+            for (uint32_t j = 0; j < m_layerSize[layer]; j++)
+            {
+                bGradient[j] += (neuronLayer[j] == 0 ? 0 : 1) * targetLayerActivationDerivative[j];
+            }
+            targetLayerActivationDerivative = std::move(nextLayerActivationDerivative);
+            nextLayerActivationDerivative.clear();
+        }
+    }
+    stepSize /= trainingData.size();
+    for (uint32_t i = 0; i < m_connectionCount; i++)
+    {
+        m_weights[i] -= stepSize * weightGradient[i];
+    }
+    for (uint32_t i = 0; i < m_biasCount; i++)
+    {
+        m_bias[i] -= stepSize * biasGradient[i];
+    }
+    delete [] biasGradient;
+    delete [] weightGradient;
+}
+
+void Brain::setInputNeurons(const float* input)
 {
     std::memcpy(m_neurons, input, sizeof(float) * m_layerSize[0]);
 }
@@ -213,6 +310,8 @@ void Brain::draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos)
         float nextYOffset = (maxNeuronCount - nextLayerSize) / 2.0f * gapY;
         for (std::size_t sourceId = 0; sourceId < layerSize; sourceId++)
         {
+            if (m_neurons[offset + sourceId] == 0)
+                continue;
             sf::Vector2<float> sourcePos = {
                 layerId * gapX + neuronRadius + pos.x,
                 sourceId * gapY + yOffset + neuronRadius + pos.y};
