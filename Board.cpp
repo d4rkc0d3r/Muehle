@@ -26,6 +26,11 @@ unsigned short Board::getTurnNumber()
     return m_activeRounds;
 }
 
+uint16_t Board::getTurnNumber(EncodedBoard b)
+{
+    return b >> 48;
+}
+
 void Board::decode(EncodedBoard b, float* target)
 {
     for(int i = 0; i < 24; i++)
@@ -78,7 +83,7 @@ bool Board::isPartOfMill(unsigned int i, float player)
 
 bool Board::fillMillMap(float player, bool* millMap)
 {
-    for(int i = 0; i < 24; i += 2)
+    for(int i = 0; i < 24; i++)
     {
         millMap[i] = false;
     }

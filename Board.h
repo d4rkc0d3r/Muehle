@@ -23,6 +23,7 @@ class Board
         std::vector<EncodedBoard> getNextLegalStates();
 
         unsigned short getTurnNumber();
+        static uint16_t getTurnNumber(EncodedBoard b);
 
         static void decode(EncodedBoard b, float* target);
         static EncodedBoard invert(EncodedBoard b);

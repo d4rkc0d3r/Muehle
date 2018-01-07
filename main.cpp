@@ -22,6 +22,31 @@ sf::Font* Board::s_font = nullptr;
 
 using namespace std;
 
+float simulateOneGame(AIAgent* ai, AIAgent* antagonist, int maxMoveCount)
+{
+    EncodedBoard b = 0;
+    vector<EncodedBoard> n;
+    for(int i = 0; i < maxMoveCount; i++)
+    {
+        bool isPlayer1Turn = Board::getTurnNumber(b) % 2 == 0;
+        if (!isPlayer1Turn)
+            b = Board::invert(b);
+        n.clear();
+        Board::getNextLegalStates(b, n);
+        if (n.size() > 0)
+        {
+            b = n[((isPlayer1Turn) ? ai : antagonist)->selectPlay(n)];
+            if (!isPlayer1Turn)
+                b = Board::invert(b);
+        }
+        else
+        {
+            return (isPlayer1Turn) ? -1.0f : 1.0f;
+        }
+    }
+    return 0;
+}
+
 int main()
 {
     sf::RenderWindow window(sf::VideoMode(1600, 900), "SFML works!");
@@ -32,7 +57,7 @@ int main()
     sf::Text text;
     text.setFont(font);
 
-    uint32_t matchCount = 512;
+    uint32_t matchCount = 128;
 
     AIPopulation population;
     population.setSeed(2);
@@ -61,8 +86,22 @@ int main()
 
     Brain brain({25, 30, 15, 1});
     BrainAgent* brainAi = new BrainAgent(brain);
-    AIAgent* ai = new GreedyAgent(0, 2);
-    AIAgent* antagonist = new GreedyAgent(0, 1);
+    AIAgent* ai = brainAi;
+    AIAgent* antagonist = new GreedyAgent(0, 3);
+
+    for(int j = 0; j < 5; j++)
+    {
+        float score = 0;
+        int gameBenchmarkCount = 1;
+        auto t1 = chrono::high_resolution_clock::now();
+        for(int i = 0; i < gameBenchmarkCount; i++)
+        {
+            score += simulateOneGame(ai, antagonist, 250);
+        }
+        auto t2 = chrono::high_resolution_clock::now();
+        chrono::duration<double> diff = t2 - t1;
+        cout << "Time to simulate " << gameBenchmarkCount << " games: " << diff.count() << " s\n";
+    }
 
     Brain testBrain({1, 50, 50, 1});
     mt19937 rng;

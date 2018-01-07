@@ -111,33 +111,34 @@ void AIPopulation::evaluateRange(uint32_t startIndex, uint32_t endIndex, uint32_
     {
         AIAgent* ai = m_agents[index];
         AIAgent* antagonist = m_antagonists[index];
-        Board board;
+        EncodedBoard board;
         vector<EncodedBoard> n;
         for (uint32_t i = 0; i < m_matchCount; i++)
         {
-            board.decode(0);
+            board = 0;
             while (true)
             {
-                if (board.getTurnNumber() > 1000)
+                if (Board::getTurnNumber(board) > 1000)
                 {
                     break;
                 }
-                bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;
+                bool isPlayer1Turn = Board::getTurnNumber(board) % 2 == 0;
                 if (!isPlayer1Turn)
-                    board.invert();
-                n = board.getNextLegalStates();
+                    board = Board::invert(board);
+                n.clear();
+                Board::getNextLegalStates(board, n);
                 if (n.size() > 0)
                 {
-                    board.decode(n[((isPlayer1Turn) ? ai : antagonist)->selectPlay(n)]);
+                    board = n[((isPlayer1Turn) ? ai : antagonist)->selectPlay(n)];
                     if (!isPlayer1Turn)
-                        board.invert();
+                        board = Board::invert(board);
                 }
                 else
                 {
                     if (!isPlayer1Turn)
                     {
                         m_scores[index]++;
-                        board.invert();
+                        board = Board::invert(board);
                     }
                     break;
                 }

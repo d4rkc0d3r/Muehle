@@ -88,13 +88,34 @@ int negamax(EncodedBoard eb, int depth, int color)
     return bestValue;
 }
 
+int negamax(EncodedBoard eb, int depth, int color, std::vector<EncodedBoard>& n)
+{
+    if (depth <= 0)
+        return color * heuristic(eb);
+    if (color < 0)
+        eb = Board::invert(eb);
+    int32_t lastSize = n.size();
+    Board::getNextLegalStates(eb, n);
+    int32_t newSize = n.size();
+    int bestValue = -24;
+    for(int32_t i = newSize - 1; i >= lastSize; i--)
+    {
+        EncodedBoard next = (color < 0) ? Board::invert(n[i]) : n[i];
+        n.pop_back();
+        int s = -negamax(next, depth - 1, -color, n);
+        bestValue = (bestValue > s) ? bestValue : s;
+    }
+    return bestValue;
+}
+
 int GreedyAgent::selectPlay(const std::vector<EncodedBoard>& choices)
 {
     int* score = new int[choices.size()];
     int maxScore = -24;
+    std::vector<EncodedBoard> n;
     for (std::size_t i = 0; i < choices.size(); i++)
     {
-        int s = -negamax(choices[i], m_recursiveLevel, -1);
+        int s = -negamax(choices[i], m_recursiveLevel, -1, n);
         score[i] = s;
         maxScore = (maxScore > s) ? maxScore : s;
     }
