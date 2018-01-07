@@ -28,7 +28,7 @@ class Brain
         void think();
         void getOutputNeurons(float* output);
 
-        void backPropagation(const std::vector<TrainingSample>& trainingData, float stepSize);
+        float backPropagation(const std::vector<TrainingSample>& trainingData, float stepSize);
 
         std::vector<std::size_t> getLayerSizes();
 

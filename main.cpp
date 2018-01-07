@@ -32,16 +32,16 @@ int main()
     sf::Text text;
     text.setFont(font);
 
-    uint32_t matchCount = 128;
+    uint32_t matchCount = 512;
 
     AIPopulation population;
-    population.setSeed(1);
+    population.setSeed(2);
     population.setSize(128);
     population.setMatchCount(matchCount);
     population.setSurvivorCount(population.getSize()/3);
     population.setNonMutatedCount(0);
     population.setThreadCount(8);
-    population.setNetLayerSizes({25, 30, 15, 1});
+    population.setNetLayerSizes({25, 40, 20, 1});
     population.setAntagonistSpawner([](){return(AIAgent*)new GreedyAgent(0,1);});
     population.reInitialize();
     population.evalGenerationAsync();
@@ -61,8 +61,27 @@ int main()
 
     Brain brain({25, 30, 15, 1});
     BrainAgent* brainAi = new BrainAgent(brain);
-    AIAgent* ai = new GreedyAgent(0,0);
-    AIAgent* antagonist = new GreedyAgent(0,3);
+    AIAgent* ai = new GreedyAgent(0, 2);
+    AIAgent* antagonist = new GreedyAgent(0, 1);
+
+    Brain testBrain({1, 50, 50, 1});
+    mt19937 rng;
+    rng.seed(69);
+    testBrain.randomizeAll(rng);
+    vector<TrainingSample> trainingData;
+
+    for(int i = 0; i <= 120; i++)
+    {
+        float f = i / 120.0f;
+        trainingData.push_back({{f}, {4 * (f - 0.5f) * (f - 0.5f)}});
+    }
+
+    float stepSize = 0.0001f;
+    float lastError = testBrain.backPropagation(trainingData, stepSize);
+
+    LineShape line;
+
+    bool testBackprop = false;
 
     while (window.isOpen())
     {
@@ -89,6 +108,7 @@ int main()
                     break;
                 case sf::Keyboard::P:
                     pause = !pause;
+                    board.decode(0);
                     break;
                 case sf::Keyboard::N:
                     showNeuralNet = !showNeuralNet;
@@ -98,6 +118,10 @@ int main()
                     break;
                 case sf::Keyboard::I:
                     board.decode(Board::invert(board.encode()));
+                    break;
+                case sf::Keyboard::R:
+                    gamesPlayed = 0;
+                    gamesWon = 0;
                     break;
                 default:
                     break;
@@ -121,7 +145,8 @@ int main()
                 bool isPlayer1Turn = board.getTurnNumber() % 2 == 0;
                 if (!isPlayer1Turn)
                     board.invert();
-                vector<EncodedBoard> n = board.getNextLegalStates();
+                vector<EncodedBoard> n;
+                Board::getNextLegalStates(board.encode(), n);
                 if (n.size() > 0)
                 {
                     board.decode(n[((isPlayer1Turn) ? ai : antagonist)->selectPlay(n)]);
@@ -155,8 +180,8 @@ int main()
 
             population.copyBestBrain(&brain);
             brainAi->setBrain(brain);
-            gamesPlayed = 0;
-            gamesWon = 0;
+            //gamesPlayed = 0;
+            //gamesWon = 0;
 
             if (saveNextGen)
             {
@@ -184,15 +209,66 @@ int main()
         window.clear();
         window.draw(text);
         board.draw(window, {50, 50});
-        if (showNeuralNet)
+        if (testBackprop)
         {
-            brain.setInputNeurons(board.encode());
-            brain.think();
-            brain.draw(window, {800, 50});
+            LineShape redLine;
+            redLine.setColor(sf::Color::Red);
+            float lf1 = trainingData[0].input[0];
+            float lf2 = trainingData[0].output[0];
+            for (uint32_t i = 1; i < trainingData.size(); i++)
+            {
+                float f1 = trainingData[i].input[0];
+                float f2 = trainingData[i].output[0];
+                redLine.setAll({850.0f + lf1 * 600, 300 + lf2 * 500}, {850.0f + f1 * 600, 300 + f2 * 500}, 1);
+                redLine.draw(window);
+                lf1 = f1;
+                lf2 = f2;
+            }
+            float input = 0.0f;
+            float lastOutput = 0;
+            testBrain.setInputNeurons(&input);
+            testBrain.think();
+            testBrain.getOutputNeurons(&lastOutput);
+            //testBrain.draw(window, {850, 50});
+            for (int i = 1; i <= 120; i++)
+            {
+                float input = i / 120.0f;
+                float output = 0;
+                testBrain.setInputNeurons(&input);
+                testBrain.think();
+                testBrain.getOutputNeurons(&output);
+                line.setAll({850.0f + (i - 1) * 5, 300 + lastOutput * 500}, {850.0f + i * 5, 300 + output * 500}, 1);
+                line.draw(window);
+                lastOutput = output;
+            }
+            Brain b;
+            b = testBrain;
+            float e = testBrain.backPropagation(trainingData, stepSize);
+            if (e > lastError)
+            {
+                //testBrain = b;
+                stepSize /= 4;
+            }
+            else
+            {
+                stepSize *= 1.01;
+            }
+            lastError = e;
+            if (stepSize < 0.0001f)
+                stepSize = 0.0001f;
         }
         else
         {
-            population.draw(window, {800, 50}, {750, 800});
+            if (showNeuralNet)
+            {
+                brain.setInputNeurons(board.encode());
+                brain.think();
+                brain.draw(window, {800, 50});
+            }
+            else
+            {
+                population.draw(window, {800, 50}, {750, 800});
+            }
         }
         window.display();
     }

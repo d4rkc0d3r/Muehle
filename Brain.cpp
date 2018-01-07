@@ -158,12 +158,15 @@ void Brain::randomize(std::mt19937& rng)
     }
 }
 
-void Brain::backPropagation(const std::vector<TrainingSample>& trainingData, float stepSize)
+#include <iostream>
+
+float Brain::backPropagation(const std::vector<TrainingSample>& trainingData, float stepSize)
 {
     uint32_t outputLayerSize = m_layerSize[m_layerSize.size() - 1];
     float* outputNeurons = &m_neurons[m_neuronCount - outputLayerSize];
     float* weightGradient = new float[m_connectionCount];
     float* biasGradient = new float[m_biasCount];
+    float error = 0.0f;
     for (uint32_t i = 0; i < m_connectionCount; i++)
     {
         weightGradient[i] = 0;
@@ -182,6 +185,7 @@ void Brain::backPropagation(const std::vector<TrainingSample>& trainingData, flo
         for (uint32_t i = 0; i < outputLayerSize; i++)
         {
             targetLayerActivationDerivative.push_back(outputNeurons[i] - sample.output[i]);
+            error += (outputNeurons[i] - sample.output[i]) * (outputNeurons[i] - sample.output[i]) / 2;
         }
         float* wGradient = &weightGradient[m_connectionCount];
         float* pWeight = &m_weights[m_connectionCount];
@@ -254,6 +258,8 @@ void Brain::backPropagation(const std::vector<TrainingSample>& trainingData, flo
     }
     delete [] biasGradient;
     delete [] weightGradient;
+    std::cout << error << std::endl;
+    return error;
 }
 
 void Brain::setInputNeurons(const float* input)

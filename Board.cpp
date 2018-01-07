@@ -28,12 +28,12 @@ unsigned short Board::getTurnNumber()
 
 void Board::decode(EncodedBoard b, float* target)
 {
-    for(int i = 23; i >= 0; i--)
+    for(int i = 0; i < 24; i++)
     {
-        target[i] = (b & 3) ? (b & 2 ? BLUE : RED) : EMPTY;
-        b >>= 2;
+        uint32_t p = getPosition(b, i);
+        target[i] = (p & 3) ? (p & 2 ? BLUE : RED) : EMPTY;
     }
-    target[24] = (b < 18) ? 0.0f : 1.0f;
+    target[24] = ((b >> 48) < 18) ? 0.0f : 1.0f;
 }
 
 EncodedBoard Board::invert(EncodedBoard b)
@@ -52,11 +52,10 @@ void Board::decode(EncodedBoard b)
 
 EncodedBoard Board::encode()
 {
-    EncodedBoard result = m_activeRounds;
+    EncodedBoard result = ((uint64_t)m_activeRounds) << 48;
     for(int i = 0; i < 24; i++)
     {
-        result <<= 2;
-        result |= (m_field[i] == EMPTY) ? 0 : ((m_field[i] == RED) ? 1 : 2);
+        setPosition(result, i, (m_field[i] == EMPTY) ? 0 : ((m_field[i] == RED) ? 1 : 2));
     }
     return result;
 }
@@ -103,9 +102,9 @@ bool Board::fillMillMap(float player, bool* millMap)
     for(int i = 1; i < 8; i += 2)
     {
         bool mill = (m_field[i] == player && m_field[i + 8] == player && m_field[i + 16] == player);
-        millMap[i] = mill;
-        millMap[i + 8] = mill;
-        millMap[i + 16] = mill;
+        millMap[i] |= mill;
+        millMap[i + 8] |= mill;
+        millMap[i + 16] |= mill;
     }
 
     for(int i = 0; i < 24; i++)
@@ -215,6 +214,174 @@ std::vector<EncodedBoard> Board::getNextLegalStates()
     return result;
 }
 
+bool Board::isPartOfMill(EncodedBoard b, uint32_t i, uint32_t player)
+{
+    if(getPosition(b, i) != player)
+        return false;
+    if(i % 2 == 0) // i is in a corner
+    {
+        return (getPosition(b, (i + 1) % 8 + i / 8 * 8) == player && getPosition(b, (i + 2) % 8 + i / 8 * 8) == player) ||
+               (getPosition(b, (i + 6) % 8 + i / 8 * 8) == player && getPosition(b, (i + 7) % 8 + i / 8 * 8) == player);
+    }
+    else
+    {
+        return (getPosition(b, (i + 1) % 8 + i / 8 * 8) == player && getPosition(b, (i + 7) % 8 + i / 8 * 8) == player) ||
+               (getPosition(b, (i + 8) % 24) == player && getPosition(b, (i + 16) % 24) == player);
+    }
+}
+
+bool Board::fillMillMap(EncodedBoard b, uint32_t player, uint32_t& millMap)
+{
+    millMap = 0;
+
+    for(int i = 0; i < 24; i += 2)
+    {
+        if (getPosition(b, i) != player || getPosition(b, i + 1) != player)
+            continue;
+        uint32_t nextCornerIndex = (i + 2) % 8 + i / 8 * 8;
+        if (getPosition(b, nextCornerIndex) != player)
+        {
+            if (i % 8 != 6)
+                i += 2;
+            continue;
+        }
+        millMap |= 1 << i;
+        millMap |= 1 << (i + 1);
+        millMap |= 1 << nextCornerIndex;
+    }
+
+    for(int i = 1; i < 8; i += 2)
+    {
+        bool mill = (getPosition(b, i) == player && getPosition(b, i + 8) == player && getPosition(b, i + 16) == player);
+        millMap |= mill << i;
+        millMap |= mill << (i + 8);
+        millMap |= mill << (i + 16);
+    }
+
+    for(int i = 0; i < 24; i++)
+    {
+        if (getPosition(b, i) == player && !((millMap >> i) & 1))
+            return true;
+    }
+
+    return false;
+}
+
+void Board::tryMoveTo(uint32_t from, uint32_t to, EncodedBoard& next, std::vector<EncodedBoard>& result)
+{
+    uint32_t i = from;
+    uint32_t n = to;
+    if(n < 0 || n >= 24 || getPosition(next, n) != EMPTY)
+        return;
+    setPosition(next, n, BLUE_INT);
+    setPosition(next, i, EMPTY_INT);
+    if(isPartOfMill(next, n, BLUE_INT))
+    {
+        uint32_t enemyMillMap = 0;
+        bool enemyHasStoneNotInMill = fillMillMap(next, RED_INT, enemyMillMap);
+        for(int j = 0; j < 24; j++)
+        {
+            if(isRed(next, j) && (!enemyHasStoneNotInMill || !((enemyMillMap >> j) & 1)))
+            {
+                setPosition(next, j, EMPTY_INT);
+                result.push_back(next);
+                setPosition(next, j, RED_INT);
+            }
+        }
+    }
+    else
+    {
+        result.push_back(next);
+    }
+    setPosition(next, n, EMPTY_INT);
+    setPosition(next, i, BLUE_INT);
+}
+
+void Board::getNextLegalStates(EncodedBoard b, std::vector<EncodedBoard>& result)
+{
+    EncodedBoard next = b + (1ULL << 48);
+
+    uint16_t activeRounds = b >> 48;
+
+    if(activeRounds < 18) // phase 1, place stone
+    {
+        for(int i = 0; i < 24; i++)
+        {
+            if(isEmpty(b, i))
+            {
+                setPosition(next, i, BLUE_INT);
+                if(isPartOfMill(next, i, BLUE_INT))
+                {
+                    uint32_t enemyMillMap = 0;
+                    bool enemyHasStoneNotInMill = fillMillMap(next, RED_INT, enemyMillMap);
+                    for(int j = 0; j < 24; j++)
+                    {
+                        if(isRed(next, j) && (!enemyHasStoneNotInMill || !((enemyMillMap >> j) & 1)))
+                        {
+                            setPosition(next, j, EMPTY_INT);
+                            result.push_back(next);
+                            setPosition(next, j, RED_INT);
+                        }
+                    }
+                }
+                else
+                {
+                    result.push_back(next);
+                }
+                setPosition(next, i, EMPTY_INT);
+            }
+        }
+    }
+    else
+    {
+        int blueStoneCount = 0;
+        for(int i = 0; i < 24; i++)
+        {
+            blueStoneCount += isBlue(b, i);
+        }
+        if(blueStoneCount < 3)
+            return;
+        // TODO implement flying when blueStoneCount == 3
+        for(uint32_t i = 0; i < 24; i++)
+        {
+            if(!isBlue(b, i))
+                continue;
+            tryMoveTo(i, (i + 1) % 8 + i / 8 * 8, next, result);
+            tryMoveTo(i, (i + 7) % 8 + i / 8 * 8, next, result);
+            if(i % 2 == 1) // not in corner
+            {
+                tryMoveTo(i, i + 8, next, result);
+                tryMoveTo(i, i - 8, next, result);
+            }
+        }
+    }
+}
+
+void Board::setPosition(EncodedBoard& b, uint32_t pos, uint32_t color)
+{
+    b = (b & ~(3ULL << (pos * 2))) | (((uint64_t)color) << (pos * 2));
+}
+
+uint32_t Board::getPosition(EncodedBoard b, uint32_t pos)
+{
+    return (b >> (pos * 2)) & 3;
+}
+
+bool Board::isRed(EncodedBoard b, uint32_t pos)
+{
+    return RED_INT == getPosition(b, pos);
+}
+
+bool Board::isBlue(EncodedBoard b, uint32_t pos)
+{
+    return BLUE_INT == getPosition(b, pos);
+}
+
+bool Board::isEmpty(EncodedBoard b, uint32_t pos)
+{
+    return EMPTY_INT == getPosition(b, pos);
+}
+
 void Board::draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos)
 {
     float stoneSize = 28;
@@ -304,6 +471,12 @@ void Board::draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos)
     line.setAll({lineOff.x + distance * 3, lineOff.y + distance * 4}, {lineOff.x + distance * 3, lineOff.y + distance * 6}, lineWidth);
     line.draw(renderTarget);
 
+    EncodedBoard b = encode();
+    sf::CircleShape blueMill(dotSize);
+    blueMill.setFillColor(sf::Color(127, 127, 255));
+    sf::CircleShape redMill(dotSize);
+    redMill.setFillColor(sf::Color(255, 127, 127));
+
     for(int i = 0; i < 24; i++)
     {
         sf::Vector2<float> p = offsetMap[i] * distance;
@@ -324,6 +497,16 @@ void Board::draw(sf::RenderTarget& renderTarget, const sf::Vector2<float>& pos)
                 player2.setPosition(p + stoneOff);
                 renderTarget.draw(player2);
             }
+        }
+        if(isPartOfMill(b, i, BLUE_INT))
+        {
+            blueMill.setPosition(p + dotOff);
+            renderTarget.draw(blueMill);
+        }
+        if(isPartOfMill(b, i, RED_INT))
+        {
+            redMill.setPosition(p + dotOff);
+            renderTarget.draw(redMill);
         }
     }
 }
